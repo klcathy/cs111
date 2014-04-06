@@ -10,8 +10,18 @@
 #include <stdlib.h>
 #include <ctype.h>
 
-/* FIXME: You may need to add #include directives, macro definitions,
-   static function definitions, etc.  */
+#define INIT 0;
+#define AND 1;
+#define SEMICOLON 2;
+#define OR 3;
+#define PIPE 4;
+#define STRING 5;
+#define LEFT_SUBSHELL 6;
+#define RIGHT_SUBSHELL 7;
+#define LEFT_REDIR 8;
+#define RIGHT_REDIR 9;
+#define NEWLINE 10;
+#define MISC 11;
 
 /* FIXME: Define the type 'struct command_stream' here.  This should
    complete the incomplete type declaration in command.h.  */
@@ -22,6 +32,7 @@ struct command_stream {
   struct command_Node *tail;
   int size;         
   int iterator;
+  struct command_t *command;
 }; 
 
 struct command_Node {
@@ -29,7 +40,11 @@ struct command_Node {
   struct command_Node *next;
 };
 
+struct command_Node *head = NULL;
+struct command_Node *tail = NULL;
+
 /* FIX SIZES LATER */
+/*
 void insert_command(struct command* curr_command)
 {
   struct command_Node* new_command = (struct command_Node*) checked_malloc(sizeof(struct command_Node));
@@ -54,7 +69,7 @@ void insert_command(struct command* curr_command)
   }
 }
 
-void delete_command(char* curr_command)
+void delete_command(struct command* curr_command)
 {
   struct command_Node* temp = head;
   int pos = 0;
@@ -110,16 +125,109 @@ void delete_command(char* curr_command)
 
   return;
 }
+*/
 
-struct command_Node *head = NULL;
-struct command_Node *tail = NULL;
+/******************** Tokenizer *************************************/
+
+// Singly linked list structure
+typedef struct token_Node {
+  int type;
+  char *string;
+  struct token_Node *next;
+} token_Node;
+
+typedef struct token_stream {
+  token_Node *head;
+  token_Node *tail;
+  struct token_stream *next;
+  size_t size;
+} token_stream;
+
+void insert_token(token_stream* stream, token_Node token)
+{
+  // Create temp token
+  token_Node* temp = (token_Node*) checked_malloc(sizeof(token_Node));
+  temp->type = token->type;
+  temp->string = token->string;
+  temp->next = token->next;
+
+  // Add to empty token stream
+  if (stream->head == NULL)
+  {
+    stream->head = temp;
+    stream->tail = temp;
+  }
+  else
+  { 
+    stream->tail->next = temp;
+    stream->tail = temp;
+  }
+
+  stream->size++;
+  return;
+}
+
+token_stream* Tokenizer(char* input)
+{
+  char c;
+
+  // Initialize token stream
+  token_stream* stream = checked_malloc(sizeof(token_stream));
+  stream->head = NULL;
+  stream->tail = NULL;
+  stream->next = NULL;
+  stream->size = 0;
+
+  // Create new token
+  token_Node newtoken;
+  newtoken.string = NULL;
+  newtoken.type = INIT;
+  newtoken.next = NULL;
+
+  size_t i;
+  for (i = 0; i < strlen(input); i++)
+  {
+    c = input[i];
+    switch(c)
+    {
+      case '#': break;    // no comments should be in the buffer
+      // INSERT CASES
+      default:
+        {
+          if (newtoken.type != STRING)  // get all, 
+          {
+            if (newtoken.type != INIT)    // not an new token
+              insert_token(stream, newtoken);
+
+            // save new character
+            char* newstring = checked_malloc(sizeof(char));
+            newstring[0] = '\0';
+            newtoken.string = newstring;
+            newtoken.type = STRING;
+          }
+
+          // add character to end of string
+          size_t length = strlen(newtoken.string);
+          newtoken.string = checked_realloc(newtoken.string, (length+1)*sizeof(token_Node));
+          newtoken.string[length] = c;
+          newtoken.string[length+1] = '\0';
+          break;
+
+        }
+
+      }
+
+    }
+
+  }
+}
 
 /****************** Stack data structure ****************************/
 typedef struct stack
 {
     command_t command;
     struct stack* prev;   
-} myStack;
+}* myStack;
 
 void push(myStack* stack, command_t command)
 {
@@ -184,20 +292,22 @@ make_command_stream (int (*get_next_byte) (void *),
 {
   char current;
   char* buffer = checked_malloc(sizeof(char));
-  size_t num_parantheses = 0;
-  char last = '\0'      // last character read
+  size_t unpair = 0;
+  char last = '\0';      // last character read
   char last_nospace = '\0';
   bool AND_FLAG = false;        // if && then true
   bool OR_FLAG = false;         // if || then true
+  bool COMMENT_FLAG = false;
+  size_t allocSize = 0;
 
   while ((current = get_next_byte(get_next_byte_argument)) != EOF)
   {
     if (!isValid(current))
         error(1, 0, "Invalid character!");
     if (current == '(')
-        num_parantheses++;
+        unpair++;
     if (current == ')')
-        num_parantheses--;
+        unpair--;
 
     if ((current == ' ' || current == '\n' || current == '\r') && (last_nospace == '\0'))
         continue;
@@ -225,10 +335,71 @@ make_command_stream (int (*get_next_byte) (void *),
     else
         OR_FLAG = false;
 
-  }
-  
+    // Get rid of spaces between special tokens
+      if ((current == '>' || current == '<' || current == '|' || current == '&') && last == ' ')
+      {
+        size_t length = strlen(buffer);
+        buffer[length-1] = '\0';
+      }
 
+      if ((current == ' ') && (last == '>' || last == '<' || last == '|' || last == '&'))
+        continue;
+
+      // Comment after special token
+      if ((current == '#') && (last_nospace == '>' || last_nospace == '<' || last_nospace == '|' || last_nospace == '&'))
+        error(1, 0, "Invalid comment!");
+
+
+      if (current == '#')
+        COMMENT_FLAG = true;
+
+      if (current == '\n' && COMMENT_FLAG == true)
+      {
+        COMMENT_FLAG = false;
+        continue;
+      }
+
+      if (current == '\n' && (last_nospace == '|' || last_nospace == '&'))
+        continue;
+
+      if (current == '\n' && (last_nospace == '>' || last_nospace == '<'))
+        error(1, 0, "Invalid redirection!");
+
+      if (current == '\n' && last == '\n')
+        continue;
+
+      if(!COMMENT_FLAG)
+      {
+        allocSize++;
+        buffer = checked_realloc(buffer, (2+allocSize)*sizeof(char));   // 1 for null-byte and 1 for next char
+        //append
+        size_t length = strlen(buffer);
+        buffer[length] = current;
+        buffer[length+1] = '\0';
+        last = current;
+        if (current != ' ')
+          last_nospace = current;
+      }
+
+      // MAYBE \n SYNTAX VALIDATION???
+
+      if (last == ')' && unpair != 0)
+        error(1, 0, "Unpaired parantheses!");
+      if (unpair != 0)
+        error(1, 0, "Unpaired parantheses!");
+
+
+
+  }
+
+/*
+  unsigned int i;
+  
+  for (i = 0; i < strlen(buffer); i++)
+    fprintf(stderr, "%c", buffer[i]);
+*/    
   return 0;
+
 }
 
 command_t
@@ -238,3 +409,4 @@ read_command_stream (command_stream_t s)
     return NULL;
   return s->command[(s->iterator++)];
 }
+

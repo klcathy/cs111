@@ -35,13 +35,3 @@ struct command
   } u;
 };
 
-// Singly linked list of commands
-typedef struct command_stream {
-  struct command Node *head;
-  struct command Node *tail;
-} command_stream;
-
-struct command_Node {
-  struct command *command;
-  struct command Node *next;
-};
