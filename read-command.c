@@ -15,7 +15,7 @@
 #define SEMICOLON 2;
 #define OR 3;
 #define PIPE 4;
-#define STRING 5;
+#define CMD 5;
 #define LEFT_SUBSHELL 6;
 #define RIGHT_SUBSHELL 7;
 #define LEFT_REDIR 8;
@@ -33,15 +33,13 @@ struct command_stream {
   int size;         
   int iterator;
   struct command_t *command;
+  struct command_stream *next;
 }; 
 
 struct command_Node {
   struct command *command;
   struct command_Node *next;
 };
-
-struct command_Node *head = NULL;
-struct command_Node *tail = NULL;
 
 /* FIX SIZES LATER */
 /*
@@ -127,7 +125,7 @@ void delete_command(struct command* curr_command)
 }
 */
 
-/******************** Tokenizer *************************************/
+/******************** Tokenizer/Parser *****************************/
 
 // Singly linked list structure
 typedef struct token_Node {
@@ -178,6 +176,9 @@ token_stream* Tokenizer(char* input)
   stream->next = NULL;
   stream->size = 0;
 
+  token_stream* origin = checked_malloc(sizeof(token_stream));
+  origin = stream;
+
   // Create new token
   token_Node newtoken;
   newtoken.string = NULL;
@@ -191,10 +192,134 @@ token_stream* Tokenizer(char* input)
     switch(c)
     {
       case '#': break;    // no comments should be in the buffer
-      // INSERT CASES
+      case '&':
+      {
+        if (newtoken.type != INIT)
+          insert_token(stream, newtoken);
+
+        // if &&
+        if (input[i+1] == '&')
+        {
+          char* newstring = checked_malloc(3*sizeof(char));
+          newstring[0] = c;
+          newstring[1] = c;
+          newstring[2] = '\0';
+          newtoken.string = newstring;
+          newtoken.type = AND;
+          i++;
+          break;
+        }
+      }
+      case '\n':
+      case ';':   // end of token
+        {
+          if (newtoken.type != INIT)      
+            insert_token(stream, newtoken);
+
+          stream->next = checked_malloc(sizeof(token_stream));
+          stream = (token_stream*) (stream->next);
+          char* newstring = checked_malloc(sizeof(char));
+          newstring[0] = c;
+          newstring[1] = '\0';
+          newtoken.string = newstring;
+          newtoken.type = NEWLINE;
+          break;
+        }
+      case '|':
+      {
+        if (newtoken.type != INIT)
+          insert_token(stream, newtoken);
+
+        // if ||
+        if (input[i+1] == '|')
+        {
+          char* newstring = checked_malloc(3*sizeof(char));
+          newstring[0] = c;
+          newstring[1] = c;
+          newstring[2] = '\0';
+          newtoken.string = newstring;
+          newtoken.type = OR;
+          i++;
+          break;
+        }
+
+        // if pipe
+        else if (input[i+1] != '|')
+        {
+          char* newstring = checked_malloc(2*sizeof(char));
+          newstring[0] = c;
+          newstring[1] = '\0';
+          newtoken.string = newstring;
+          newtoken.type = PIPE;
+          break;
+        }
+      }
+
+      // left redirect
+      case '<':
+      {
+        if (newtoken.type != INIT)
+          insert_token(stream, newtoken);
+
+        char* newstring = checked_malloc(2*sizeof(char));
+        newstring[0] = c;
+        newstring[1] = '\0';
+        newtoken.string = newstring;
+        newtoken.type = LEFT_REDIR;
+        break;
+      }
+
+      // right redirect
+      case '>':
+      {
+        if (newtoken.type != INIT)
+          insert_token(stream, newtoken);
+
+
+        char* newstring = checked_malloc(2*sizeof(char));
+        newstring[0] = c;
+        newstring[1] = '\0';
+        newtoken.string = newstring;
+        newtoken.type = RIGHT_REDIR;
+        break;
+      }
+
+      // subshell start
+      case '(':
+      {
+        if (newtoken.type != INIT)
+          insert_token(stream, newtoken);
+
+        char* newstring = checked_malloc(2*sizeof(char));
+        newstring[0] = c;
+        newstring[1] = '\0';
+        newtoken.string = newstring;
+        newtoken.type = LEFT_SUBSHELL;
+        break;
+      }
+
+      // subshell end
+      case ')':
+      {
+        if (newtoken.type != INIT)
+          insert_token(stream, newtoken);
+
+        char* newstring = checked_malloc(2*sizeof(char));
+        newstring[0] = c;
+        newstring[1] = '\0';
+        newtoken.string = newstring;
+        newtoken.type = RIGHT_SUBSHELL;
+        break;
+      }
+      case ' ':
+      {
+        // if the space is not inside a command, we don't care
+        if (newtoken.type != CMD)
+          break;
+      }
       default:
         {
-          if (newtoken.type != STRING)  // get all, 
+          if (newtoken.type != CMD)  // get all, 
           {
             if (newtoken.type != INIT)    // not an new token
               insert_token(stream, newtoken);
@@ -203,7 +328,7 @@ token_stream* Tokenizer(char* input)
             char* newstring = checked_malloc(sizeof(char));
             newstring[0] = '\0';
             newtoken.string = newstring;
-            newtoken.type = STRING;
+            newtoken.type = CMD;
           }
 
           // add character to end of string
@@ -215,11 +340,36 @@ token_stream* Tokenizer(char* input)
 
         }
 
-      }
-
     }
 
   }
+
+  // left-over tokens?
+  if (newtoken.type != INIT)
+    insert_token(stream, newtoken);
+
+  return origin;
+}
+
+command_t Parser(token_stream* stream)
+{
+  if (stream == NULL)
+    return NULL;
+
+  token_Node* iter = stream->head;
+
+  myStack commands = NULL;
+  myStack operators = NULL;
+
+  while (iter != NULL)
+  {
+    switch (iter->type)
+    {
+      case INIT: break;
+      case CMD: 
+    }
+  }
+
 }
 
 /****************** Stack data structure ****************************/
@@ -381,24 +531,28 @@ make_command_stream (int (*get_next_byte) (void *),
           last_nospace = current;
       }
 
-      // MAYBE \n SYNTAX VALIDATION???
-
-      if (last == ')' && unpair != 0)
-        error(1, 0, "Unpaired parantheses!");
-      if (unpair != 0)
-        error(1, 0, "Unpaired parantheses!");
-
-
-
   }
 
-/*
-  unsigned int i;
-  
-  for (i = 0; i < strlen(buffer); i++)
-    fprintf(stderr, "%c", buffer[i]);
-*/    
-  return 0;
+  // MAYBE \n SYNTAX VALIDATION???
+
+  if (last == ')' && unpair != 0)
+    error(1, 0, "Unpaired parantheses!");
+  if (unpair != 0)
+    error(1, 0, "Unpaired parantheses!");
+
+  token_stream* stream = Tokenizer(buffer);
+
+  command_stream_t cmd_stream = checked_malloc(sizeof(struct command_stream));
+  cmd_stream->size = 0;
+  cmd_stream->iterator = 0;
+
+  while (stream != NULL)
+  {
+    // make commands from tokens
+  }
+
+  free(buffer);
+  return cmd_stream;
 
 }
 
