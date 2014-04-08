@@ -2,8 +2,11 @@
 
 echo abc
 
-echo < hello
-
 d || e | f && g
 
+x < y
+
 a;b
+
+echo
+world
