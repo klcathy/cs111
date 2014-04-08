@@ -635,31 +635,38 @@ make_command_stream (int (*get_next_byte) (void *),
 	bool COMMENT_FLAG = false;
 	size_t allocSize = 0;
 	bool LINE_FLAG = true;      // Flags beginning of line, used to remove whitespace
-	size_t num_lines = 0;
+	size_t num_lines = 1;		// should it be set to 0 or 1?
 
 	while ((current = get_next_byte(get_next_byte_argument)) != EOF)
 	{
 		if (!isValid(current))
-			error(1, 0, "Invalid character!");
+		{
+			//error(1, 0, "%d: Invalid character!\n", num_lines);
+			fprintf(stderr, "%d: Invalid character\n", num_lines);
+			exit(1); 
+		}
 		if (current == '(')
 			unpair++;
 		if (current == ')')
 			unpair--;
-
-		if ((current == ' ' || current == '\n' || current == '\r') && (last_nospace == '\0') && COMMENT_FLAG == false)
+		if(current == '\n' && (last_nospace == '\0') && COMMENT_FLAG == false)
+			num_lines++;  
+		if ((current == ' ' || current == '\r') && (last_nospace == '\0') && COMMENT_FLAG == false)
 		{
 			//printf("Skipping whitespace!\n");
 			continue;
 		}
 		if (current == ';' && (last_nospace == '\n' || last == '\0'))
 		{
-			error(1, 0, "Invalid semicolon!");
-			//exit(1);
+			//error(1, 0, "%d: Invalid semicolon!\n, num_lines");
+			fprintf(stderr, "%d: Invalid semicolon\n", num_lines);
+			exit(1);
 		}
 		if ((current == '<' && last_nospace == '<') || (current == '>' && last_nospace == '>'))
 		{
-			error(1, 0, "Invalid redirection!");
-			//exit(1);
+			//error(1, 0, "%d: Invalid redirection!\n", num_lines);
+			fprintf(stderr, "%d: Invalid redirection\n", num_lines);
+			exit(1);
 		}
 		if (current == ';')
 			current = '\n';
@@ -667,13 +674,15 @@ make_command_stream (int (*get_next_byte) (void *),
 		// Check for &&& and |||
 		if (AND_FLAG == true && current == '&')
 		{
-			error(1, 0, "Invalid &");
-			//exit(1);
+			//error(1, 0, "%d: Invalid &\n", num_lines);
+			fprintf(stderr, "%d: Invalid &\n", num_lines);
+			exit(1);
 		}
 		if (OR_FLAG == true && current == '|')
 		{
-			error(1, 0, "Invalid |");
-			//exit(1);
+			//error(1, 0, "%d: Invalid |\n", num_lines);
+			fprintf(stderr, "%d: Invalid |\n", num_lines);
+			exit(1); 
 		}
 
 		// Set flag to be true if && or ||
@@ -700,8 +709,9 @@ make_command_stream (int (*get_next_byte) (void *),
 		// Comment after special token
 		if ((current == '#') && (last_nospace == '>' || last_nospace == '<' || last_nospace == '|' || last_nospace == '&'))
 		{
-			error(1, 0, "Invalid comment!");
-			//exit(1);
+			//error(1, 0, "%d: Invalid comment!", num_lines);
+			fprintf(stderr, "%d: Invalid comment\n", num_lines);
+			exit(1); 
 		}
 
 		if ((last == ' ' && current == ' ') || current == '\t' || (LINE_FLAG == true && current == ' '))
@@ -717,6 +727,7 @@ make_command_stream (int (*get_next_byte) (void *),
 		if (current == '\n' && COMMENT_FLAG == true)
 		{
 			COMMENT_FLAG = false;
+			num_lines++;
 			//printf("Changing COMMENT_FLAG to false!\n");
 			continue;
 		}
@@ -730,12 +741,14 @@ make_command_stream (int (*get_next_byte) (void *),
 
 		if (current == '\n' && (last_nospace == '>' || last_nospace == '<'))
 		{
-			error(1, 0, "Invalid redirection!");
-			//exit(1);
+			//error(1, 0, "%d: Invalid redirection!\n", num_lines);
+			fprintf(stderr, "%d: Invalid redirection\n", num_lines);
+			exit(1); 
 		}
 
 		if (current == '\n' && last == '\n')
 		{
+			num_lines++;
 			LINE_FLAG = true;
 			continue;
 		}
@@ -760,20 +773,22 @@ make_command_stream (int (*get_next_byte) (void *),
 			if (current != ' ')
 				last_nospace = current;
 		}
-
+	//fprintf(stderr, "num_lines: %d\n", num_lines); 
 	}
 
 	// MAYBE \n SYNTAX VALIDATION???
 
 	if (last == ')' && unpair != 0)
 	{
-		error(1, 0, "Unpaired parantheses!");
-		//exit(1);
+		//error(1, 0, "%d: Unpaired parantheses!\n", num_lines);
+		fprintf(stderr, "%d: Unpaired parantheses\n", num_lines);
+		exit(1);
 	}
 	if (unpair != 0)
 	{
-		error(1, 0, "Unpaired parantheses!");
-		//exit(1);
+		//error(1, 0, "%d: Unpaired parantheses!\n", num_lines);
+		fprintf(stderr, "%d: Unpaired parantheses\n", num_lines);
+		exit(1); 
 	}
 
 
