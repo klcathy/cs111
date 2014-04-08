@@ -282,6 +282,17 @@ token_stream* tokenizer(char* input)
 		// if the space is not inside a command, we don't care
 		if (temptoken.type != CMD)
 			break;
+		// space is within command, so tokenize into separate commands
+		else
+		{
+			if (temptoken.type != INIT)
+				insert_token(stream, temptoken);
+			char* str = checked_malloc(sizeof(char));
+			str[0] = '\0';
+			temptoken.string = str;
+			temptoken.type = CMD; 		
+			break; 
+		}
 		// otherwise, let default handle it
 		}
 		default:
