@@ -24,9 +24,6 @@
 #define NEWLINE 10
 #define MISC 11
 
-/* FIXME: Define the type 'struct command_stream' here.  This should
-	 complete the incomplete type declaration in command.h.  */
-
 // Singly linked list of commands
 struct command_stream {
 	int size;         
@@ -180,7 +177,7 @@ token_stream* tokenizer(char* input)
 		case ';':   // end of token
 		{
 			if (temptoken.type != INIT)      
-			insert_token(stream, temptoken);
+				insert_token(stream, temptoken);
 
 			stream->next = checked_malloc(sizeof(token_stream));
 			stream = (token_stream*) (stream->next);
@@ -282,7 +279,6 @@ token_stream* tokenizer(char* input)
 		// if the space is not inside a command, we don't care
 		if (temptoken.type != CMD)
 			break;
-		// space is within command, so tokenize into separate commands
 		else
 		{
 			if (temptoken.type != INIT)
@@ -429,6 +425,9 @@ command_t parser(token_stream* stream)
 
 	myCommandStack command_stack = NULL;
 	myOperatorStack operator_stack = NULL;
+	size_t wordpos = 0;
+	size_t word_length = 0;
+	bool CMD_FLAG = false;
 
 	while (iter != NULL)
 	{
@@ -440,28 +439,50 @@ command_t parser(token_stream* stream)
 		else if (iter->type == CMD)
 		{
 		  //printf("Making a simple command\n");
-		  command_t simple = (command_t) checked_malloc (sizeof(struct command));
-		  simple->type = SIMPLE_COMMAND;
-		  simple->status = -1;
-		  simple->input = NULL;
-		  simple->output = NULL;
-		  simple->u.word = (char**) checked_malloc(2*sizeof(char*));
-		  simple->u.word[0] = iter->string;
-		  simple->u.word[1] = '\0';
-		  push(&command_stack, simple);
-		  printf("Simple->u.word[0]: %s\n", iter->string);
+		  if (CMD_FLAG == false)
+		  {
+		  	command_t simple = (command_t) checked_malloc (sizeof(struct command));
+		    simple->type = SIMPLE_COMMAND;
+		    simple->status = -1;
+		    simple->input = NULL;
+		    simple->output = NULL;
+		  	simple->u.word = (char**) checked_malloc(2*sizeof(char*));
+		  	simple->u.word[wordpos] = iter->string;
+		  	simple->u.word[++wordpos] = NULL;
+		  	word_length += 2;
+		  	CMD_FLAG = true;
+		  	push(&command_stack, simple);
+		  	printf("Simple->u.word[%d]: %s\n", (wordpos-1), simple->u.word[wordpos-1]);
+		  }
+		  else
+		  {
+		  	//printf("word[0]: %s\n", simple->u.word[wordpos-1]);
+		  	command_t simple = peek(&command_stack);
+		  	pop(&command_stack);
+		  	simple->u.word = checked_realloc(simple->u.word, (word_length+1)*sizeof(char*));
+		  	simple->u.word[wordpos] = iter->string;
+		  	simple->u.word[++wordpos] = NULL;
+		  	word_length++;
+		  	push(&command_stack, simple);
+		  	printf("Simple->u.word[%d]: %s\n", (wordpos-1), simple->u.word[wordpos-1]);
+		  }
 		  iter = iter->next;
 		  continue;
 		}
 		// Subshell
 		else if (iter->type == LEFT_SUBSHELL)
 		{
+			wordpos = 0;
+			word_length = 0;
 			push2(&operator_stack, iter->type);
 			iter = iter->next;
+			CMD_FLAG = false;
 			continue;
 		}
 		else if (iter->type == RIGHT_SUBSHELL)
 		{
+			wordpos = 0;
+			word_length = 0;
 			int top_operator = peek2(&operator_stack);
 			pop2(&operator_stack);
 			while (top_operator != LEFT_SUBSHELL)
@@ -485,11 +506,14 @@ command_t parser(token_stream* stream)
 			pop(&command_stack);
 			push(&command_stack, subshell);
 			iter = iter->next;
+			CMD_FLAG = false;
 			continue;
 		}
 		// Redirection
 		else if (iter->type == LEFT_REDIR)
 		{
+			wordpos = 0;
+			word_length = 0;
 			iter = iter->next;
 			char* next_token = iter->string;
 			command_t top_command = peek(&command_stack);
@@ -499,10 +523,13 @@ command_t parser(token_stream* stream)
 			printf("top_command->input: %s\n", top_command->input);
 			push(&command_stack, top_command);
 			iter = iter->next;
+			CMD_FLAG = false;
 			continue;
 		}
 		else if (iter->type == RIGHT_REDIR)
 		{
+			wordpos = 0;
+			word_length = 0;
 			iter = iter->next;
 			char* next_token = iter->string;
 			command_t top_command = peek(&command_stack);
@@ -510,16 +537,20 @@ command_t parser(token_stream* stream)
 			top_command->output = next_token;
 			push(&command_stack, top_command);
 			iter = iter->next;
+			CMD_FLAG = false;
 			continue;
 		}
 		// Operators
 		else 
 		{
+		  wordpos = 0;
+		  word_length = 0;
 		  if (operator_stack == NULL)
 		  {
 			push2(&operator_stack, iter->type);
 			printf("Pushing %d!\n", iter->type);
 			iter = iter->next;
+			CMD_FLAG = false;
 			continue;
 		  }
 
@@ -531,6 +562,7 @@ command_t parser(token_stream* stream)
 			  push2(&operator_stack, iter->type);
 			  printf("Pushing %d!\n", iter->type);
 			  iter = iter->next;
+			  CMD_FLAG = false;
 			  continue;
 			}
 
@@ -554,6 +586,7 @@ command_t parser(token_stream* stream)
 			  push2(&operator_stack, iter->type);
 			  printf("Pushing %d!\n", iter->type);
 			  iter = iter->next;
+			  CMD_FLAG = false;
 			  continue;
 			}
 		  }
@@ -620,7 +653,8 @@ bool isValid(char c)
 
 // NOT SURE IF EXIT(1) NEEDED
 // FIX UNNCESSARY NEWLINES TOKENS
-
+// SOME WEIRD SHIT HAPPENS IN COMMENTS E.G. #a;b --> INVALID SEMICOLON
+// a |
 command_stream_t
 make_command_stream (int (*get_next_byte) (void *),
 			 void *get_next_byte_argument)
@@ -629,28 +663,35 @@ make_command_stream (int (*get_next_byte) (void *),
 	char* buffer = checked_malloc(sizeof(char));
 	size_t unpair = 0;
 	char last = '\0';      // last character read
-	char last_nospace = '\0';
+	char last_nospace = '\0';		// tracks last previous nonspace character
+	char last_last_nospace = '\0';		// tracks the last previous nonspace char before last_nospace
 	bool AND_FLAG = false;        // if && then true
 	bool OR_FLAG = false;         // if || then true
 	bool COMMENT_FLAG = false;
 	size_t allocSize = 0;
 	bool LINE_FLAG = true;      // Flags beginning of line, used to remove whitespace
-	size_t num_lines = 1;		// should it be set to 0 or 1?
+	size_t num_lines = 1;
 
 	while ((current = get_next_byte(get_next_byte_argument)) != EOF)
 	{
+    //printf("char: %c Numlines: %d\n", current, num_lines);
+		/*
 		if (!isValid(current))
 		{
-			//error(1, 0, "%d: Invalid character!\n", num_lines);
-			fprintf(stderr, "%d: Invalid character\n", num_lines);
-			exit(1); 
+			printf("%c\n", current);
+			error(1, 0, "Invalid character!");
 		}
+		*/
 		if (current == '(')
 			unpair++;
 		if (current == ')')
 			unpair--;
+
 		if(current == '\n' && (last_nospace == '\0') && COMMENT_FLAG == false)
+		{
 			num_lines++;  
+			continue;
+		}
 		if ((current == ' ' || current == '\r') && (last_nospace == '\0') && COMMENT_FLAG == false)
 		{
 			//printf("Skipping whitespace!\n");
@@ -662,9 +703,8 @@ make_command_stream (int (*get_next_byte) (void *),
 			fprintf(stderr, "%d: Invalid semicolon\n", num_lines);
 			exit(1);
 		}
-		if ((current == '<' && last_nospace == '<') || (current == '>' && last_nospace == '>'))
+		if ((current == '<' && last_nospace == '<' && last_last_nospace == '<') || (current == '>' && last_nospace == '>' && last_last_nospace == '>'))
 		{
-			//error(1, 0, "%d: Invalid redirection!\n", num_lines);
 			fprintf(stderr, "%d: Invalid redirection\n", num_lines);
 			exit(1);
 		}
@@ -674,13 +714,11 @@ make_command_stream (int (*get_next_byte) (void *),
 		// Check for &&& and |||
 		if (AND_FLAG == true && current == '&')
 		{
-			//error(1, 0, "%d: Invalid &\n", num_lines);
 			fprintf(stderr, "%d: Invalid &\n", num_lines);
 			exit(1);
 		}
 		if (OR_FLAG == true && current == '|')
 		{
-			//error(1, 0, "%d: Invalid |\n", num_lines);
 			fprintf(stderr, "%d: Invalid |\n", num_lines);
 			exit(1); 
 		}
@@ -709,7 +747,6 @@ make_command_stream (int (*get_next_byte) (void *),
 		// Comment after special token
 		if ((current == '#') && (last_nospace == '>' || last_nospace == '<' || last_nospace == '|' || last_nospace == '&'))
 		{
-			//error(1, 0, "%d: Invalid comment!", num_lines);
 			fprintf(stderr, "%d: Invalid comment\n", num_lines);
 			exit(1); 
 		}
@@ -741,15 +778,22 @@ make_command_stream (int (*get_next_byte) (void *),
 
 		if (current == '\n' && (last_nospace == '>' || last_nospace == '<'))
 		{
-			//error(1, 0, "%d: Invalid redirection!\n", num_lines);
 			fprintf(stderr, "%d: Invalid redirection\n", num_lines);
 			exit(1); 
 		}
 
-		if (current == '\n' && last == '\n')
+    if (current == '\n' && last == '\n')
+    {
+      num_lines++;
+      LINE_FLAG = true;
+      continue;
+    }
+
+		if (current == '\n')
 		{
 			num_lines++;
 			LINE_FLAG = true;
+      //printf("Here\n");
 			continue;
 		}
 
@@ -771,22 +815,25 @@ make_command_stream (int (*get_next_byte) (void *),
 			//printf("\n");
 			last = current;
 			if (current != ' ')
+			{
+				if (last_nospace != '\0')
+					last_last_nospace = last_nospace;
+
 				last_nospace = current;
+			}
 		}
-	//fprintf(stderr, "num_lines: %d\n", num_lines); 
+
 	}
 
 	// MAYBE \n SYNTAX VALIDATION???
 
 	if (last == ')' && unpair != 0)
 	{
-		//error(1, 0, "%d: Unpaired parantheses!\n", num_lines);
 		fprintf(stderr, "%d: Unpaired parantheses\n", num_lines);
 		exit(1);
 	}
 	if (unpair != 0)
 	{
-		//error(1, 0, "%d: Unpaired parantheses!\n", num_lines);
 		fprintf(stderr, "%d: Unpaired parantheses\n", num_lines);
 		exit(1); 
 	}
@@ -795,7 +842,12 @@ make_command_stream (int (*get_next_byte) (void *),
 	size_t j;
 	printf("Buffer\n");
 	for (j = 0; j < strlen(buffer); j++)
-		printf("%c", buffer[j]);
+	{
+		if (buffer[j] == '\n')
+			printf("new\n");
+		else
+			printf("%c", buffer[j]);
+	}
 
 	token_stream* stream = tokenizer(buffer);
 	token_stream* stream2 = stream;
@@ -832,15 +884,15 @@ make_command_stream (int (*get_next_byte) (void *),
 	}
 
 	command_stream_t cmd_stream = checked_malloc(sizeof(struct command_stream));
-	cmd_stream->size = 0;
+	cmd_stream->size = -1;
 	cmd_stream->iterator = 0;
 	cmd_stream->commands = checked_malloc(sizeof(struct command));
 
 
 	while (stream != NULL)
 	{
-		cmd_stream->commands[cmd_stream->size] = parser(stream);
 		cmd_stream->size++;
+		cmd_stream->commands[cmd_stream->size] = parser(stream);
 		printf("Next stream\n");
 		token_stream* toDelete = stream;
 		stream = (token_stream*)stream->next;
@@ -848,14 +900,30 @@ make_command_stream (int (*get_next_byte) (void *),
 	}
 
 	printf("cmd_stream size: %d\n", cmd_stream->size);
-/*
+	//printf("%s", cmd_stream->commands[k]->u.word[0]);
 	size_t k;
 	for (k = 0; k < cmd_stream->size; k++)
 	{
 		printf("Command %d: ", k);
-		printf("%s", cmd_stream->commands[k]->u.word[0]);
+		if (cmd_stream->commands[k]->type == AND_COMMAND)
+			printf("AND_COMMAND\n");
+		if (cmd_stream->commands[k]->type == OR_COMMAND)
+			printf("OR_COMMAND\n");
+		if (cmd_stream->commands[k]->type == PIPE_COMMAND)
+			printf("PIPE_COMMAND\n");
+		if (cmd_stream->commands[k]->type == SEQUENCE_COMMAND)
+			printf("SEQUENCE_COMMAND\n");
+		if (cmd_stream->commands[k]->type == SIMPLE_COMMAND)
+		{
+			printf("SIMPLE_COMMAND\n");
+			//printf("words[0]: %s\n", cmd_stream->commands[k]->u.word[0]);
+			//printf("words[1]: %s\n", cmd_stream->commands[k]->u.word[1]);
+			//printf("words[2]: %s\n", cmd_stream->commands[k]->u.word[2]);
+		}
+		if (cmd_stream->commands[k]->type == SUBSHELL_COMMAND)
+			printf("SUBSHELL_COMMAND\n");
 	}
-*/
+
 
 	free(buffer);
 	return cmd_stream;
