@@ -34,38 +34,6 @@ struct command_stream {
 	command_t *commands;
 }; 
 
-struct command_Node {
-	struct command *command;
-	struct command_Node *next;
-};
-
-/* FIX SIZES LATER */
-/*
-void insert_command(struct command* curr_command)
-{
-	struct command_Node* new_command = (struct command_Node*) checked_malloc(sizeof(struct command_Node));
-	new_command->command = curr_command;
-	new_command->next = NULL;
-
-	// Empty list
-	if (head == NULL && tail == NULL)
-	{
-	head = new_command;
-	tail = new_command;
-	//size++;       
-	return;
-	}
-	// Insert at end
-	else
-	{
-	tail->next = new_command;
-	tail = new_command;
-	 // size++;
-	return;
-	}
-}
-*/
-
 /****************** Stack data structure ****************************/
 // MAY NEED TO CHANGE OPERATOR STACK
 typedef struct stack
@@ -112,13 +80,13 @@ void push2(myOperatorStack* stack, int oper)
 void pop2(myOperatorStack* stack)
 {
   if (stack != NULL && (*stack) != NULL)
-    *stack = (*stack)->prev;
+	*stack = (*stack)->prev;
 }
 
 int peek2(myOperatorStack* stack)
 {
-  if (stack == NULLL || *stack == NULL)
-    return NULL;
+  if (stack == NULL || *stack == NULL)
+	return -1;
   return (*stack)->operator;
 }
 /******************** Tokenizer*************************************/
@@ -217,7 +185,7 @@ token_stream* tokenizer(char* input)
 			stream->next = checked_malloc(sizeof(token_stream));
 			stream = (token_stream*) (stream->next);
 			char* str = checked_malloc(sizeof(char));
-			str[0] = 'n';						// CHANGE THIS BACK TO str[0] = c WHEN DONE
+			str[0] = 'n';                       // CHANGE THIS BACK TO str[0] = c WHEN DONE
 			str[1] = '\0';
 			temptoken.string = str;
 			temptoken.type = NEWLINE;
@@ -378,63 +346,68 @@ command_t combineCommand(command_t first, command_t second, int operator)
 {
   switch(operator)
   {
-    case SEMICOLON:
-    case NEWLINE:
-    {
-      command_t newCommand = (command_t) checked_malloc(sizeof(stuct command));
-      newCommand->type = SEQUENCE_COMMAND;
-      newCommand->status = -1;
-      newCommand->input = NULL;
-      newCommand->output = NULL;
-      //newCommand->u.command = (command_t) checked_malloc(2*sizeof(struct command));
-      newCommand->u.command[0] = first;
-      newCommand->u.command[1] = second;
-      return newCommand;
-      break;
-    }
-    case AND:
-    {
-      command_t newCommand = (command_t) checked_malloc(sizeof(struct command));
-      newCommand->type = AND_COMMAND;
-      newCommand->status = -1;
-      newCommand->input = NULL;
-      newCommand->output = NULL;
-      //newCommand->u.command = (command_t) checked_malloc(2*sizeof(struct command));
-      newCommand->u.command[0] = first;
-      newCommand->u.command[1] = second;
-      return newCommand;
-      break;
-    }
-    case OR:
-    {
-      command_t newCommand = (command_t) checked_malloc(sizeof(struct command));
-      newCommand->type = OR_COMMAND;
-      newCommand->status = -1;
-      newCommand->input = NULL;
-      newCommand->output = NULL;
-      //newCommand->u.command = (command_t) checked_malloc(2*sizeof(struct command));
-      newCommand->u.command[0] = first;
-      newCommand->u.command[1] = second;
-      return newCommand;
-      break;
-    }
-    case PIPE:
-    {
-      command_t newCommand = (command_t) checked_malloc(sizeof(struct command));
-      newCommand->type = PIPE_COMMAND;
-      newCommand->status = -1;
-      newCommand->input = NULL;
-      newCommand->output = NULL;
-      //newCommand->u.command = (command_t) checked_malloc(2*sizeof(struct command));
-      newCommand->u.command[0] = first;
-      newCommand->u.command[1] = second;
-      return newCommand;
-      break;
-    }
-    default: break;
+	case SEMICOLON:
+	case NEWLINE:
+	{
+	  printf("SEQUENCE\n");
+	  command_t newCommand = (command_t) checked_malloc(sizeof(struct command));
+	  newCommand->type = SEQUENCE_COMMAND;
+	  newCommand->status = -1;
+	  newCommand->input = NULL;
+	  newCommand->output = NULL;
+	  //newCommand->u.command = (command_t) checked_malloc(2*sizeof(struct command));
+	  newCommand->u.command[0] = first;
+	  newCommand->u.command[1] = second;
+	  return newCommand;
+	  break;
+	}
+	case AND:
+	{
+	  printf("AND\n");
+	  command_t newCommand = (command_t) checked_malloc(sizeof(struct command));
+	  newCommand->type = AND_COMMAND;
+	  newCommand->status = -1;
+	  newCommand->input = NULL;
+	  newCommand->output = NULL;
+	  //newCommand->u.command = (command_t) checked_malloc(2*sizeof(struct command));
+	  newCommand->u.command[0] = first;
+	  newCommand->u.command[1] = second;
+	  return newCommand;
+	  break;
+	}
+	case OR:
+	{
+	  printf("OR\n");
+	  command_t newCommand = (command_t) checked_malloc(sizeof(struct command));
+	  newCommand->type = OR_COMMAND;
+	  newCommand->status = -1;
+	  newCommand->input = NULL;
+	  newCommand->output = NULL;
+	  //newCommand->u.command = (command_t) checked_malloc(2*sizeof(struct command));
+	  newCommand->u.command[0] = first;
+	  newCommand->u.command[1] = second;
+	  return newCommand;
+	  break;
+	}
+	case PIPE:
+	{
+	  printf("PIPE\n");
+	  command_t newCommand = (command_t) checked_malloc(sizeof(struct command));
+	  newCommand->type = PIPE_COMMAND;
+	  newCommand->status = -1;
+	  newCommand->input = NULL;
+	  newCommand->output = NULL;
+	  //newCommand->u.command = (command_t) checked_malloc(2*sizeof(struct command));
+	  newCommand->u.command[0] = first;
+	  newCommand->u.command[1] = second;
+	  return newCommand;
+	  break;
+	}
+	default: break;
   }
 }
 
+// MIGHT NEED TO ADD NULL BYTE AT END
 
 command_t parser(token_stream* stream)
 {
@@ -448,97 +421,154 @@ command_t parser(token_stream* stream)
 
 	while (iter != NULL)
 	{
-	    if (iter->type == INIT)
-	    {
-	      iter = iter->next;
-	      continue;
-	    }
-	    else if (iter->type == CMD)
-	    {
-	      printf("Making a simple command\n");
-	      command_t simple = (command_t) checked_malloc (sizeof(struct command));
-	      simple->type = SIMPLE_COMMAND;
-	      simple->status = -1;
-	      simple->input = NULL;
-	      simple->output = NULL;
-	      simple->u.word = (char**) checked_malloc(2*sizeof(char*));
-	      simple->u.word[0] = iter->string;
-	      simple->u.word[1] = '\0';
-	      push(&command_stack, simple);
-	      iter = iter->next;
-	      continue;
-	    }
-	    // Subshell
-	    else if (iter->type == LEFT_SUBSHELL)
-	    {
-	    	push(&operator>stack, iter->type);
-	    	iter = iter->next;
-	    	continue;
-	    }
-	    else if (iter->type == RIGHT_SUBSHELL)
-	    {
-	    	int top_operator = pop2(&operator_stack);
-	    	while (top_operator != LEFT_SUBSHELL)
-	    	{
-	    		command_t second_command = pop(&command_stack);
-	    		command_t first_command = pop(&command_stack);
-	    		command_t new_command = combineCommand(first_command, second_command, top_operator);
-	    		push(&command_stack, new_command);
-	    		top_operator = pop2(&operator_stack);
-	    	}
+		if (iter->type == INIT || iter->type == NEWLINE)
+		{
+		  iter = iter->next;
+		  continue;
+		}
+		else if (iter->type == CMD)
+		{
+		  //printf("Making a simple command\n");
+		  command_t simple = (command_t) checked_malloc (sizeof(struct command));
+		  simple->type = SIMPLE_COMMAND;
+		  simple->status = -1;
+		  simple->input = NULL;
+		  simple->output = NULL;
+		  simple->u.word = (char**) checked_malloc(2*sizeof(char*));
+		  simple->u.word[0] = iter->string;
+		  simple->u.word[1] = '\0';
+		  push(&command_stack, simple);
+		  printf("Simple->u.word[0]: %s\n", iter->string);
+		  iter = iter->next;
+		  continue;
+		}
+		// Subshell
+		else if (iter->type == LEFT_SUBSHELL)
+		{
+			push2(&operator_stack, iter->type);
+			iter = iter->next;
+			continue;
+		}
+		else if (iter->type == RIGHT_SUBSHELL)
+		{
+			int top_operator = peek2(&operator_stack);
+			pop2(&operator_stack);
+			while (top_operator != LEFT_SUBSHELL)
+			{
+				command_t second_command = peek(&command_stack);
+				pop(&command_stack);
+				command_t first_command = peek(&command_stack);
+				pop(&command_stack);
+				command_t new_command = combineCommand(first_command, second_command, top_operator);
+				push(&command_stack, new_command);
+				top_operator = peek2(&operator_stack);
+				pop2(&operator_stack);
+			}
 
-	    	command_t subshell = (command_t) checked_malloc (sizeof(struct command));
-	    	subshell->type = SUBSHELL_COMMAND;
-	    	subshell->status = -1;
-	    	subshell->input = NULL;
-	    	subshell->output = NULL;
-	    	subshell->u.subshell_command = pop(&command_stack);
-	    	push(&command_stack, subshell);
-	    	iter = iter->next;
-	    	continue;
-	    }
-	    // Redirection
+			command_t subshell = (command_t) checked_malloc (sizeof(struct command));
+			subshell->type = SUBSHELL_COMMAND;
+			subshell->status = -1;
+			subshell->input = NULL;
+			subshell->output = NULL;
+			subshell->u.subshell_command = peek(&command_stack);
+			pop(&command_stack);
+			push(&command_stack, subshell);
+			iter = iter->next;
+			continue;
+		}
+		// Redirection
+		else if (iter->type == LEFT_REDIR)
+		{
+			iter = iter->next;
+			char* next_token = iter->string;
+			command_t top_command = peek(&command_stack);
+			pop(&command_stack);
+			printf("top_command->u.word[0]: %s\n", top_command->u.word[0]);
+			top_command->input = next_token;
+			printf("top_command->input: %s\n", top_command->input);
+			push(&command_stack, top_command);
+			iter = iter->next;
+			continue;
+		}
+		else if (iter->type == RIGHT_REDIR)
+		{
+			iter = iter->next;
+			char* next_token = iter->string;
+			command_t top_command = peek(&command_stack);
+			pop(&command_stack);
+			top_command->output = next_token;
+			push(&command_stack, top_command);
+			iter = iter->next;
+			continue;
+		}
+		// Operators
+		else 
+		{
+		  if (operator_stack == NULL)
+		  {
+			push2(&operator_stack, iter->type);
+			printf("Pushing %d!\n", iter->type);
+			iter = iter->next;
+			continue;
+		  }
 
-	    // Operators
-	    else 
-	    {
-	      if (operator_stack == NULL)
-	      {
-	        push(&operator_stack, iter->type);
-	        iter = iter->next;
-	        continue;
-	      }
+		  else
+		  {
+			int top_operator = peek2(&operator_stack);
+			if (precedence(iter->type) > precedence(top_operator))
+			{
+			  push2(&operator_stack, iter->type);
+			  printf("Pushing %d!\n", iter->type);
+			  iter = iter->next;
+			  continue;
+			}
 
-	      else
-	      {
-	        int top_operator = peek2(&operator_stack);
-	        if (precedence(iter->type) > precedence(top_operator))
-	        {
-	          push2(&operator_stack, iter->type);
-	          iter = iter->next;
-	          continue;
-	        }
-
-	        else
-	        {
-	          while(top_operator != LEFT_SUBSHELL && (precedence(iter->type) <= precedence(top_operator)))
-	          {
-	            int operator = pop2(&operator_stack);
-	            command_t second_command = pop(&command_stack);
-	            command_t first_command = pop(&command_stack);
-	            command_t new_command = combineCommand(first_command, second_command, operator);
-	            push(&command_stack, new_command);
-	            top_operator = peek2(&operator_stack);
-	            if (top_operator == NULL)
-	            	break;
-	          }
-	          push2(&operator_stack, iter->type);
-	          iter = iter->next;
-	          continue;
-	        }
-	      }
-    	}
+			else
+			{
+			  while(top_operator != LEFT_SUBSHELL && (precedence(iter->type) <= precedence(top_operator)))
+			  {
+				int operator = peek2(&operator_stack);
+				pop2(&operator_stack);
+				command_t second_command = peek(&command_stack);
+				pop(&command_stack);
+				command_t first_command = peek(&command_stack);
+				pop(&command_stack);
+				printf("combine operator: %d\n", operator);
+				command_t new_command = combineCommand(first_command, second_command, operator);
+				push(&command_stack, new_command);
+				top_operator = peek2(&operator_stack);
+				if (top_operator == -1)
+					break;
+			  }
+			  push2(&operator_stack, iter->type);
+			  printf("Pushing %d!\n", iter->type);
+			  iter = iter->next;
+			  continue;
+			}
+		  }
+		}
 	}
+
+	// left-over operators??????
+	if (operator_stack != NULL)
+	{
+		int operator = peek2(&operator_stack);
+		pop2(&operator_stack);
+		command_t second_command = peek(&command_stack);
+		pop(&command_stack);
+		command_t first_command = peek(&command_stack);
+		pop(&command_stack);
+		command_t new_command = combineCommand(first_command, second_command, operator);
+		push(&command_stack, new_command);
+	}
+
+	command_t root = peek(&command_stack);
+	pop(&command_stack);
+
+	if (root == NULL)
+		return NULL;
+
+	return root;
 
 }
 /*******************************************************************/
@@ -593,7 +623,7 @@ make_command_stream (int (*get_next_byte) (void *),
 	bool OR_FLAG = false;         // if || then true
 	bool COMMENT_FLAG = false;
 	size_t allocSize = 0;
-	bool LINE_FLAG = true;		// Flags beginning of line, used to remove whitespace
+	bool LINE_FLAG = true;      // Flags beginning of line, used to remove whitespace
 	size_t num_lines = 0;
 
 	while ((current = get_next_byte(get_next_byte_argument)) != EOF)
@@ -613,12 +643,12 @@ make_command_stream (int (*get_next_byte) (void *),
 		if (current == ';' && (last_nospace == '\n' || last == '\0'))
 		{
 			error(1, 0, "Invalid semicolon!");
-			exit(1);
+			//exit(1);
 		}
 		if ((current == '<' && last_nospace == '<') || (current == '>' && last_nospace == '>'))
 		{
 			error(1, 0, "Invalid redirection!");
-			exit(1);
+			//exit(1);
 		}
 		if (current == ';')
 			current = '\n';
@@ -627,12 +657,12 @@ make_command_stream (int (*get_next_byte) (void *),
 		if (AND_FLAG == true && current == '&')
 		{
 			error(1, 0, "Invalid &");
-			exit(1);
+			//exit(1);
 		}
 		if (OR_FLAG == true && current == '|')
 		{
 			error(1, 0, "Invalid |");
-			exit(1);
+			//exit(1);
 		}
 
 		// Set flag to be true if && or ||
@@ -660,7 +690,7 @@ make_command_stream (int (*get_next_byte) (void *),
 		if ((current == '#') && (last_nospace == '>' || last_nospace == '<' || last_nospace == '|' || last_nospace == '&'))
 		{
 			error(1, 0, "Invalid comment!");
-			exit(1);
+			//exit(1);
 		}
 
 		if ((last == ' ' && current == ' ') || current == '\t' || (LINE_FLAG == true && current == ' '))
@@ -690,7 +720,7 @@ make_command_stream (int (*get_next_byte) (void *),
 		if (current == '\n' && (last_nospace == '>' || last_nospace == '<'))
 		{
 			error(1, 0, "Invalid redirection!");
-			exit(1);
+			//exit(1);
 		}
 
 		if (current == '\n' && last == '\n')
@@ -727,12 +757,12 @@ make_command_stream (int (*get_next_byte) (void *),
 	if (last == ')' && unpair != 0)
 	{
 		error(1, 0, "Unpaired parantheses!");
-		exit(1);
+		//exit(1);
 	}
 	if (unpair != 0)
 	{
 		error(1, 0, "Unpaired parantheses!");
-		exit(1);
+		//exit(1);
 	}
 
 
@@ -780,7 +810,7 @@ make_command_stream (int (*get_next_byte) (void *),
 	cmd_stream->iterator = 0;
 	cmd_stream->commands = checked_malloc(sizeof(struct command));
 
-/*
+
 	while (stream != NULL)
 	{
 		cmd_stream->commands[cmd_stream->size] = parser(stream);
@@ -790,7 +820,8 @@ make_command_stream (int (*get_next_byte) (void *),
 		stream = (token_stream*)stream->next;
 		free(toDelete);
 	}
-*/
+
+	printf("cmd_stream size: %d\n", cmd_stream->size);
 /*
 	size_t k;
 	for (k = 0; k < cmd_stream->size; k++)

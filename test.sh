@@ -1,3 +1,9 @@
 #! /bin/sh
 
-echo hello
+echo abc
+
+echo < hello
+
+d || e | f && g
+
+a;b
