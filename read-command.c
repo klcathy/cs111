@@ -67,33 +67,60 @@ void insert_command(struct command* curr_command)
 */
 
 /****************** Stack data structure ****************************/
+// MAY NEED TO CHANGE OPERATOR STACK
 typedef struct stack
 {
 	command_t command;
 	struct stack* prev;   
-}* myStack;
+}* myCommandStack;
 
-void push(myStack* stack, command_t command)
+void push(myCommandStack* stack, command_t command)
 {
-	myStack temp = (myStack) checked_malloc(sizeof(struct stack));
+	myCommandStack temp = (myCommandStack) checked_malloc(sizeof(struct stack));
 	temp->command = command;
 	temp->prev = *stack;
 	*stack = temp;
 }
 
-void pop(myStack* stack)
+void pop(myCommandStack* stack)
 {
 	if (stack != NULL && (*stack) != NULL)
 		*stack = (*stack)->prev;
 }
 
-command_t peek(myStack* stack)
+command_t peek(myCommandStack* stack)
 {
 	if (stack == NULL || *stack == NULL)
 		return NULL;
 	return (*stack)->command;
 }
 
+typedef struct stack2
+{
+  int operator;
+  struct stack2* prev;
+}* myOperatorStack;
+
+void push2(myOperatorStack* stack, int oper)
+{
+  myOperatorStack temp = (myOperatorStack) checked_malloc(sizeof(struct stack2));
+  temp->operator = oper;
+  temp->prev = *stack;
+  *stack = temp;
+}
+
+void pop2(myOperatorStack* stack)
+{
+  if (stack != NULL && (*stack) != NULL)
+    *stack = (*stack)->prev;
+}
+
+int peek2(myOperatorStack* stack)
+{
+  if (stack == NULLL || *stack == NULL)
+    return NULL;
+  return (*stack)->operator;
+}
 /******************** Tokenizer*************************************/
 
 // Singly linked list structure
@@ -133,6 +160,8 @@ void insert_token(token_stream* stream, token_Node token)
 	stream->size++;
 	return;
 }
+
+// BREAK INPUT BY SPACE, e.g. echo hello should be echo->hello??
 
 token_stream* tokenizer(char* input)
 {
@@ -343,6 +372,70 @@ int precedence(int oper)
 	return rank[pos];
 }
 
+
+// NOT SURE IF hANDLING NEWLINE PROPERLY
+command_t combineCommand(command_t first, command_t second, int operator)
+{
+  switch(operator)
+  {
+    case SEMICOLON:
+    case NEWLINE:
+    {
+      command_t newCommand = (command_t) checked_malloc(sizeof(stuct command));
+      newCommand->type = SEQUENCE_COMMAND;
+      newCommand->status = -1;
+      newCommand->input = NULL;
+      newCommand->output = NULL;
+      //newCommand->u.command = (command_t) checked_malloc(2*sizeof(struct command));
+      newCommand->u.command[0] = first;
+      newCommand->u.command[1] = second;
+      return newCommand;
+      break;
+    }
+    case AND:
+    {
+      command_t newCommand = (command_t) checked_malloc(sizeof(struct command));
+      newCommand->type = AND_COMMAND;
+      newCommand->status = -1;
+      newCommand->input = NULL;
+      newCommand->output = NULL;
+      //newCommand->u.command = (command_t) checked_malloc(2*sizeof(struct command));
+      newCommand->u.command[0] = first;
+      newCommand->u.command[1] = second;
+      return newCommand;
+      break;
+    }
+    case OR:
+    {
+      command_t newCommand = (command_t) checked_malloc(sizeof(struct command));
+      newCommand->type = OR_COMMAND;
+      newCommand->status = -1;
+      newCommand->input = NULL;
+      newCommand->output = NULL;
+      //newCommand->u.command = (command_t) checked_malloc(2*sizeof(struct command));
+      newCommand->u.command[0] = first;
+      newCommand->u.command[1] = second;
+      return newCommand;
+      break;
+    }
+    case PIPE:
+    {
+      command_t newCommand = (command_t) checked_malloc(sizeof(struct command));
+      newCommand->type = PIPE_COMMAND;
+      newCommand->status = -1;
+      newCommand->input = NULL;
+      newCommand->output = NULL;
+      //newCommand->u.command = (command_t) checked_malloc(2*sizeof(struct command));
+      newCommand->u.command[0] = first;
+      newCommand->u.command[1] = second;
+      return newCommand;
+      break;
+    }
+    default: break;
+  }
+}
+
+
 command_t parser(token_stream* stream)
 {
 	if (stream == NULL)
@@ -350,40 +443,101 @@ command_t parser(token_stream* stream)
 
 	token_Node* iter = stream->head;
 
-	myStack commands = NULL;
-	myStack operators = NULL;
+	myCommandStack command_stack = NULL;
+	myOperatorStack operator_stack = NULL;
 
 	while (iter != NULL)
 	{
-		switch (iter->type)
-		{
-			case INIT: 
-			{
-				iter = iter->next;
-				break;
-			}	
-			case CMD: 
-			{
-				printf("Making a simple command\n");
-				command_t simple = (command_t) checked_malloc (sizeof(struct command));
-				simple->type = SIMPLE_COMMAND;
-				simple->status = -1;
-				simple->input = NULL;
-				simple->output = NULL;
-				simple->u.word = (char**) checked_malloc(2*sizeof(char*));
-				simple->u.word[0] = iter->string;
-				simple->u.word[1] = '\0';
-				push(&commands, simple);
-				iter = iter->next;
-				break;
-			}
-			default: 
-			{
-				iter = iter->next;
-				break;
-			}
+	    if (iter->type == INIT)
+	    {
+	      iter = iter->next;
+	      continue;
+	    }
+	    else if (iter->type == CMD)
+	    {
+	      printf("Making a simple command\n");
+	      command_t simple = (command_t) checked_malloc (sizeof(struct command));
+	      simple->type = SIMPLE_COMMAND;
+	      simple->status = -1;
+	      simple->input = NULL;
+	      simple->output = NULL;
+	      simple->u.word = (char**) checked_malloc(2*sizeof(char*));
+	      simple->u.word[0] = iter->string;
+	      simple->u.word[1] = '\0';
+	      push(&command_stack, simple);
+	      iter = iter->next;
+	      continue;
+	    }
+	    // Subshell
+	    else if (iter->type == LEFT_SUBSHELL)
+	    {
+	    	push(&operator>stack, iter->type);
+	    	iter = iter->next;
+	    	continue;
+	    }
+	    else if (iter->type == RIGHT_SUBSHELL)
+	    {
+	    	int top_operator = pop2(&operator_stack);
+	    	while (top_operator != LEFT_SUBSHELL)
+	    	{
+	    		command_t second_command = pop(&command_stack);
+	    		command_t first_command = pop(&command_stack);
+	    		command_t new_command = combineCommand(first_command, second_command, top_operator);
+	    		push(&command_stack, new_command);
+	    		top_operator = pop2(&operator_stack);
+	    	}
 
-		}
+	    	command_t subshell = (command_t) checked_malloc (sizeof(struct command));
+	    	subshell->type = SUBSHELL_COMMAND;
+	    	subshell->status = -1;
+	    	subshell->input = NULL;
+	    	subshell->output = NULL;
+	    	subshell->u.subshell_command = pop(&command_stack);
+	    	push(&command_stack, subshell);
+	    	iter = iter->next;
+	    	continue;
+	    }
+	    // Redirection
+
+	    // Operators
+	    else 
+	    {
+	      if (operator_stack == NULL)
+	      {
+	        push(&operator_stack, iter->type);
+	        iter = iter->next;
+	        continue;
+	      }
+
+	      else
+	      {
+	        int top_operator = peek2(&operator_stack);
+	        if (precedence(iter->type) > precedence(top_operator))
+	        {
+	          push2(&operator_stack, iter->type);
+	          iter = iter->next;
+	          continue;
+	        }
+
+	        else
+	        {
+	          while(top_operator != LEFT_SUBSHELL && (precedence(iter->type) <= precedence(top_operator)))
+	          {
+	            int operator = pop2(&operator_stack);
+	            command_t second_command = pop(&command_stack);
+	            command_t first_command = pop(&command_stack);
+	            command_t new_command = combineCommand(first_command, second_command, operator);
+	            push(&command_stack, new_command);
+	            top_operator = peek2(&operator_stack);
+	            if (top_operator == NULL)
+	            	break;
+	          }
+	          push2(&operator_stack, iter->type);
+	          iter = iter->next;
+	          continue;
+	        }
+	      }
+    	}
 	}
 
 }
@@ -626,7 +780,7 @@ make_command_stream (int (*get_next_byte) (void *),
 	cmd_stream->iterator = 0;
 	cmd_stream->commands = checked_malloc(sizeof(struct command));
 
-
+/*
 	while (stream != NULL)
 	{
 		cmd_stream->commands[cmd_stream->size] = parser(stream);
@@ -636,7 +790,7 @@ make_command_stream (int (*get_next_byte) (void *),
 		stream = (token_stream*)stream->next;
 		free(toDelete);
 	}
-
+*/
 /*
 	size_t k;
 	for (k = 0; k < cmd_stream->size; k++)
