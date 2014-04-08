@@ -126,8 +126,6 @@ void insert_token(token_stream* stream, token_Node token)
 	return;
 }
 
-// BREAK INPUT BY SPACE, e.g. echo hello should be echo->hello??
-
 token_stream* tokenizer(char* input)
 {
 	char c;
@@ -173,19 +171,29 @@ token_stream* tokenizer(char* input)
 			break;
 		}
 		}
-		case '\n':
+		case '\n': 
+    { 
+      if (temptoken.type != INIT)      
+        insert_token(stream, temptoken);
+
+      stream->next = checked_malloc(sizeof(token_stream));
+      stream = (token_stream*) (stream->next);
+      char* str = checked_malloc(sizeof(char));
+      str[0] = '\0';
+      temptoken.string = str;
+      temptoken.type = NEWLINE;
+      break;
+    }
 		case ';':   // end of token
 		{
 			if (temptoken.type != INIT)      
 				insert_token(stream, temptoken);
 
-			stream->next = checked_malloc(sizeof(token_stream));
-			stream = (token_stream*) (stream->next);
 			char* str = checked_malloc(sizeof(char));
-			str[0] = 'n';                       // CHANGE THIS BACK TO str[0] = c WHEN DONE
+			str[0] = c;                       // CHANGE THIS BACK TO str[0] = c WHEN DONE
 			str[1] = '\0';
 			temptoken.string = str;
-			temptoken.type = NEWLINE;
+			temptoken.type = SEMICOLON;
 			break;
 		}
 		case '|':
@@ -343,7 +351,8 @@ int precedence(int oper)
 			break;
 		}
 	}
-	assert(pos != -1);
+	if (pos == -1)
+    return -1;
 	return rank[pos];
 }
 
@@ -356,7 +365,7 @@ command_t combineCommand(command_t first, command_t second, int operator)
 	case SEMICOLON:
 	case NEWLINE:
 	{
-	  printf("SEQUENCE\n");
+	  //printf("SEQUENCE\n");
 	  command_t newCommand = (command_t) checked_malloc(sizeof(struct command));
 	  newCommand->type = SEQUENCE_COMMAND;
 	  newCommand->status = -1;
@@ -370,7 +379,7 @@ command_t combineCommand(command_t first, command_t second, int operator)
 	}
 	case AND:
 	{
-	  printf("AND\n");
+	  //printf("AND\n");
 	  command_t newCommand = (command_t) checked_malloc(sizeof(struct command));
 	  newCommand->type = AND_COMMAND;
 	  newCommand->status = -1;
@@ -384,7 +393,7 @@ command_t combineCommand(command_t first, command_t second, int operator)
 	}
 	case OR:
 	{
-	  printf("OR\n");
+	  //printf("OR\n");
 	  command_t newCommand = (command_t) checked_malloc(sizeof(struct command));
 	  newCommand->type = OR_COMMAND;
 	  newCommand->status = -1;
@@ -398,7 +407,7 @@ command_t combineCommand(command_t first, command_t second, int operator)
 	}
 	case PIPE:
 	{
-	  printf("PIPE\n");
+	  //printf("PIPE\n");
 	  command_t newCommand = (command_t) checked_malloc(sizeof(struct command));
 	  newCommand->type = PIPE_COMMAND;
 	  newCommand->status = -1;
@@ -431,6 +440,7 @@ command_t parser(token_stream* stream)
 
 	while (iter != NULL)
 	{
+    //printf("iter->string: %s\n", iter->string);
 		if (iter->type == INIT || iter->type == NEWLINE)
 		{
 		  iter = iter->next;
@@ -438,7 +448,7 @@ command_t parser(token_stream* stream)
 		}
 		else if (iter->type == CMD)
 		{
-		  //printf("Making a simple command\n");
+		  printf("Making a simple command\n");
 		  if (CMD_FLAG == false)
 		  {
 		  	command_t simple = (command_t) checked_malloc (sizeof(struct command));
@@ -456,7 +466,6 @@ command_t parser(token_stream* stream)
 		  }
 		  else
 		  {
-		  	//printf("word[0]: %s\n", simple->u.word[wordpos-1]);
 		  	command_t simple = peek(&command_stack);
 		  	pop(&command_stack);
 		  	simple->u.word = checked_realloc(simple->u.word, (word_length+1)*sizeof(char*));
@@ -541,17 +550,18 @@ command_t parser(token_stream* stream)
 			continue;
 		}
 		// Operators
-		else 
+		else if (iter->type == AND || iter->type == OR || iter->type == SEMICOLON || iter->type == PIPE)
 		{
 		  wordpos = 0;
 		  word_length = 0;
 		  if (operator_stack == NULL)
 		  {
-			push2(&operator_stack, iter->type);
-			printf("Pushing %d!\n", iter->type);
-			iter = iter->next;
-			CMD_FLAG = false;
-			continue;
+        printf("Empty operator stack\n");
+			  push2(&operator_stack, iter->type);
+			  printf("Pushing %d!\n", iter->type);
+			  iter = iter->next;
+			  CMD_FLAG = false;
+			  continue;
 		  }
 
 		  else
@@ -591,12 +601,25 @@ command_t parser(token_stream* stream)
 			}
 		  }
 		}
+
+    // Catch some other token just to be safe
+    else
+    {
+      printf("Why am i here\n");
+      wordpos = 0;
+      word_length = 0;
+      iter = iter->next;
+      CMD_FLAG = false;
+      continue;
+    }
 	}
 
 	// left-over operators??????
 	if (operator_stack != NULL)
 	{
+    printf("Operator stack is not empty\n");
 		int operator = peek2(&operator_stack);
+    printf("Operator: %d\n", operator);
 		pop2(&operator_stack);
 		command_t second_command = peek(&command_stack);
 		pop(&command_stack);
@@ -605,14 +628,51 @@ command_t parser(token_stream* stream)
 		command_t new_command = combineCommand(first_command, second_command, operator);
 		push(&command_stack, new_command);
 	}
+  else
+  {
+    printf("Operator stack is empty\n");
+    command_t second_command = peek(&command_stack);
+    if (second_command != NULL)
+    {
+      pop(&command_stack);
+      command_t first_command = peek(&command_stack);
+      if (first_command != NULL)
+      {
+        printf("Two commands, no operators\n");
+        /*
+        command_t simple = (command_t) checked_malloc (sizeof(struct command));
+        simple->type = SIMPLE_COMMAND;
+        simple->status = -1;
+        simple->input = NULL;
+        simple->output = NULL;
+        simple->u.word = (char**) checked_malloc(3*sizeof(char*));
+        simple->u.word[0] = iter->string;
+        simple->u.word[++wordpos] = NULL;
+        word_length += 2;
+        CMD_FLAG = true;
+        push(&command_stack, simple);
+        */
+      }
+      else
+        push(&command_stack, second_command);
+    }
+  }
 
 	command_t root = peek(&command_stack);
-	pop(&command_stack);
+  //if (root->u.word != NULL)
+  //{
+  //  printf("value of SIMPLE_COMMAND: %d\n", SIMPLE_COMMAND);
+  //  printf("root: %s type: %d\n", root->u.word[0], root->type);
+  //}
+  if (root == NULL)
+    return NULL;
+  else
+  {
+    printf("root type: %d\n", root->type);
+    pop(&command_stack);
 
-	if (root == NULL)
-		return NULL;
-
-	return root;
+    return root;
+  }
 
 }
 /*******************************************************************/
@@ -709,7 +769,11 @@ make_command_stream (int (*get_next_byte) (void *),
 			exit(1);
 		}
 		if (current == ';')
-			current = '\n';
+    {
+      ;
+			//current = '\n';
+      //continue;
+    }
 
 		// Check for &&& and |||
 		if (AND_FLAG == true && current == '&')
@@ -789,14 +853,6 @@ make_command_stream (int (*get_next_byte) (void *),
       continue;
     }
 
-		if (current == '\n')
-		{
-			num_lines++;
-			LINE_FLAG = true;
-      //printf("Here\n");
-			continue;
-		}
-
 		if(!COMMENT_FLAG)
 		{
 			//printf("Not a comment!\n");
@@ -843,9 +899,9 @@ make_command_stream (int (*get_next_byte) (void *),
 	printf("Buffer\n");
 	for (j = 0; j < strlen(buffer); j++)
 	{
-		if (buffer[j] == '\n')
-			printf("new\n");
-		else
+		//if (buffer[j] == '\n')
+			//printf("new\n");
+		//else
 			printf("%c", buffer[j]);
 	}
 
@@ -854,13 +910,14 @@ make_command_stream (int (*get_next_byte) (void *),
 
 	size_t stream_counter = 0;
 
+
 	printf("Token stream %d size: %d\n", stream_counter, stream2->size);
 	size_t counter = 0;
 
 	token_Node* temp = stream2->head;
 	while (temp != NULL)
 	{
-		printf("Token %d: %s\n", counter, temp->string);
+		printf("Token %d: %s Type: %d\n ", counter, temp->string, temp->type);
 		counter++;
 
 		if (temp->next == NULL)
@@ -893,11 +950,14 @@ make_command_stream (int (*get_next_byte) (void *),
 	{
 		cmd_stream->size++;
 		cmd_stream->commands[cmd_stream->size] = parser(stream);
+    if (cmd_stream->commands[cmd_stream->size] != NULL)
+      printf("Type: %d\n", cmd_stream->commands[cmd_stream->size]->type);
 		printf("Next stream\n");
 		token_stream* toDelete = stream;
 		stream = (token_stream*)stream->next;
 		free(toDelete);
 	}
+
 
 	printf("cmd_stream size: %d\n", cmd_stream->size);
 	//printf("%s", cmd_stream->commands[k]->u.word[0]);
@@ -906,7 +966,9 @@ make_command_stream (int (*get_next_byte) (void *),
 	{
 		printf("Command %d: ", k);
 		if (cmd_stream->commands[k]->type == AND_COMMAND)
+    {
 			printf("AND_COMMAND\n");
+    }
 		if (cmd_stream->commands[k]->type == OR_COMMAND)
 			printf("OR_COMMAND\n");
 		if (cmd_stream->commands[k]->type == PIPE_COMMAND)
@@ -915,8 +977,8 @@ make_command_stream (int (*get_next_byte) (void *),
 			printf("SEQUENCE_COMMAND\n");
 		if (cmd_stream->commands[k]->type == SIMPLE_COMMAND)
 		{
-			printf("SIMPLE_COMMAND\n");
-			//printf("words[0]: %s\n", cmd_stream->commands[k]->u.word[0]);
+			printf("SIMPLE_COMMAND:\n");
+			printf("words[0]: %s\n", cmd_stream->commands[k]->u.word[0]);
 			//printf("words[1]: %s\n", cmd_stream->commands[k]->u.word[1]);
 			//printf("words[2]: %s\n", cmd_stream->commands[k]->u.word[2]);
 		}

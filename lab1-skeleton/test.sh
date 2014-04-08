@@ -7,3 +7,6 @@ echo < hello
 d || e | f && g
 
 a;b
+
+echo
+world
