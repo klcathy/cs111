@@ -330,6 +330,13 @@ token_stream* tokenizer(char* input)
 	if (temptoken.type != INIT)
 		insert_token(stream, temptoken);
 
+	// insert NULL stream to mark end of tokens
+	stream->next = checked_malloc(sizeof(token_stream));
+    //stream = (token_stream*) (stream->next);
+
+
+	fprintf(stderr, "%s\n", "End of Tokenizer");
+
 	return origin;
 }
 
@@ -357,7 +364,7 @@ int precedence(int oper)
 }
 
 
-// NOT SURE IF hANDLING NEWLINE PROPERLY
+// NOT SURE IF hANDLING NEWLINE PROPERLY (THINK I AM)
 command_t combineCommand(command_t first, command_t second, int operator)
 {
   switch(operator)
@@ -423,12 +430,20 @@ command_t combineCommand(command_t first, command_t second, int operator)
   }
 }
 
-// MIGHT NEED TO ADD NULL BYTE AT END
+// MIGHT NEED TO ADD NULL BYTE AT END (DONT THINK SO)
 
 command_t parser(token_stream* stream)
 {
-	if (stream == NULL)
+	//fprintf(stderr, "%s\n", "Entering Parser");
+
+	//fprintf(stderr, "stream size: %d\n", stream->size);	
+
+	if (stream->size == 0)
+	{
+		fprintf(stderr, "%s\n", "NULL Stream");
+
 		return NULL;
+	}
 
 	token_Node* iter = stream->head;
 
@@ -672,7 +687,7 @@ command_t parser(token_stream* stream)
   }
   else
   {
-    //printf("root type: %d\n", root->type);
+    printf("root type: %d\n", root->type);
     pop(&command_stack);
 
     return root;
@@ -715,10 +730,12 @@ bool isValid(char c)
 	}
 }
 
-// NOT SURE IF EXIT(1) NEEDED
-// FIX UNNCESSARY NEWLINES TOKENS
+
+// FIX UNNCESSARY NEWLINES TOKENS (GHETTO FIXED)
 // SOME WEIRD SHIT HAPPENS IN COMMENTS E.G. #a;b --> INVALID SEMICOLON
-// a |
+// GOT FUCKED ON SUBSHELL
+
+
 command_stream_t
 make_command_stream (int (*get_next_byte) (void *),
 			 void *get_next_byte_argument)
@@ -734,6 +751,7 @@ make_command_stream (int (*get_next_byte) (void *),
 	bool COMMENT_FLAG = false;
 	size_t allocSize = 0;
 	bool LINE_FLAG = true;      // Flags beginning of line, used to remove whitespace
+	bool SUBSHELL_FLAG = false;
 	size_t num_lines = 1;
 
 	while ((current = get_next_byte(get_next_byte_argument)) != EOF)
@@ -747,9 +765,15 @@ make_command_stream (int (*get_next_byte) (void *),
 		}
 		*/
 		if (current == '(')
+		{
+			SUBSHELL_FLAG = true;
 			unpair++;
+		}
 		if (current == ')')
+		{
+			SUBSHELL_FLAG = false;
 			unpair--;
+		}
 
 		if(current == '\n' && (last_nospace == '\0') && COMMENT_FLAG == false)
 		{
@@ -850,12 +874,30 @@ make_command_stream (int (*get_next_byte) (void *),
 			exit(1); 
 		}
 
-    if (current == '\n' && last == '\n')
-    {
-      num_lines++;
-      LINE_FLAG = true;
-      continue;
-    }
+	    if (current == '\n' && last == '\n')
+	    {
+	      num_lines++;
+	      LINE_FLAG = true;
+	      continue;
+	    }
+
+	    if (current == '\n' && SUBSHELL_FLAG == true)
+	    {
+	    	num_lines++; 
+	    	continue;
+	    }
+
+	    if (current == ')' && SUBSHELL_FLAG == true)
+	    {
+	    	allocSize++;
+	    	buffer = checked_realloc(buffer, (2+allocSize)*sizeof(char));
+	    	size_t length = strlen(buffer); 
+	    	//printf("Buffer char%c", buffer[length]);
+	    	buffer[length] = current; 
+	    	buffer[length+1] = '\0'; 
+	    	SUBSHELL_FLAG = false;
+	    	continue;
+	    }
 
 		if(!COMMENT_FLAG)
 		{
@@ -913,7 +955,7 @@ make_command_stream (int (*get_next_byte) (void *),
 	token_stream* stream2 = stream;
 
 	size_t stream_counter = 0;
-/*
+
 
 	printf("Token stream %d size: %d\n", stream_counter, stream2->size);
 	size_t counter = 0;
@@ -943,32 +985,37 @@ make_command_stream (int (*get_next_byte) (void *),
 		else
 			temp = temp->next;
 	}
-*/
+	
+	
+
 	command_stream_t cmd_stream = checked_malloc(sizeof(struct command_stream));
-	cmd_stream->size = -1;
+	cmd_stream->size = 0;
 	cmd_stream->iterator = 0;
 	cmd_stream->commands = checked_malloc(sizeof(struct command));
-
+	int pos = 0;
 
 	while (stream != NULL)
 	{
-		cmd_stream->size++;
 		command_t newcommand = parser(stream);
 
     // that means it was the last extra token we have at the end
     if (newcommand == NULL)
     {
+      fprintf(stderr, "%s\n", "End of Parser");
       break;
     }
     else
-		  cmd_stream->commands[cmd_stream->size] = newcommand;
+    {
+		  cmd_stream->commands[pos] = newcommand;
+		  cmd_stream->size++;
+		  pos++;
+		  //printf("newcommand->type: %d\n", newcommand->type);
+	}
 		// cmd_stream->commands[cmd_stream->size] = parser(stream);
-		//printf("Pos: %d ", cmd_stream->size);
+	printf("Pos: %d ", pos-1);
+   if (cmd_stream->commands[pos-1] != NULL)
+     	 printf("Command Type: %d\n", cmd_stream->commands[pos-1]->type);		// Should match root->type
 
-   // if (cmd_stream->commands[cmd_stream->size] != NULL)
-   //  	 printf("Command Type: %d\n", cmd_stream->commands[cmd_stream->size]->type);		// Should match root->type
-
-/*
     size_t k;
     for (k = 0; k < cmd_stream->size; k++)
     {
@@ -993,7 +1040,7 @@ make_command_stream (int (*get_next_byte) (void *),
       if (cmd_stream->commands[k]->type == SUBSHELL_COMMAND)
         printf("SUBSHELL_COMMAND\n");
     }
-*/
+
 	//	printf("Next stream\n");
 		token_stream* toDelete = stream;
 		stream = (token_stream*)stream->next;
