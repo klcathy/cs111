@@ -1,8 +1,8 @@
 #! /bin/sh
 
-echo abc
+echo abc sup
 
-echo < hello
+x < y
 
 d || e | f && g
 

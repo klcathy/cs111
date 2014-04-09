@@ -440,6 +440,7 @@ command_t parser(token_stream* stream)
 
 	while (iter != NULL)
 	{
+    //printf("Looking at token: %s\n", iter->string);
     //printf("iter->string: %s\n", iter->string);
 		if (iter->type == INIT || iter->type == NEWLINE)
 		{
@@ -448,7 +449,7 @@ command_t parser(token_stream* stream)
 		}
 		else if (iter->type == CMD)
 		{
-		  printf("Making a simple command\n");
+		  //printf("Making a simple command\n");
 		  if (CMD_FLAG == false)
 		  {
 		  	command_t simple = (command_t) checked_malloc (sizeof(struct command));
@@ -462,7 +463,7 @@ command_t parser(token_stream* stream)
 		  	word_length += 2;
 		  	CMD_FLAG = true;
 		  	push(&command_stack, simple);
-		  	printf("Simple->u.word[%d]: %s\n", (wordpos-1), simple->u.word[wordpos-1]);
+		  	//printf("Simple->u.word[%d]: %s\n", (wordpos-1), simple->u.word[wordpos-1]);
 		  }
 		  else
 		  {
@@ -473,7 +474,7 @@ command_t parser(token_stream* stream)
 		  	simple->u.word[++wordpos] = NULL;
 		  	word_length++;
 		  	push(&command_stack, simple);
-		  	printf("Simple->u.word[%d]: %s\n", (wordpos-1), simple->u.word[wordpos-1]);
+		  	//printf("Simple->u.word[%d]: %s\n", (wordpos-1), simple->u.word[wordpos-1]);
 		  }
 		  iter = iter->next;
 		  continue;
@@ -527,9 +528,9 @@ command_t parser(token_stream* stream)
 			char* next_token = iter->string;
 			command_t top_command = peek(&command_stack);
 			pop(&command_stack);
-			printf("top_command->u.word[0]: %s\n", top_command->u.word[0]);
+			//printf("top_command->u.word[0]: %s\n", top_command->u.word[0]);
 			top_command->input = next_token;
-			printf("top_command->input: %s\n", top_command->input);
+			//printf("top_command->input: %s\n", top_command->input);
 			push(&command_stack, top_command);
 			iter = iter->next;
 			CMD_FLAG = false;
@@ -556,9 +557,9 @@ command_t parser(token_stream* stream)
 		  word_length = 0;
 		  if (operator_stack == NULL)
 		  {
-        printf("Empty operator stack\n");
+        //printf("Empty operator stack\n");
 			  push2(&operator_stack, iter->type);
-			  printf("Pushing %d!\n", iter->type);
+			  //printf("Pushing %d!\n", iter->type);
 			  iter = iter->next;
 			  CMD_FLAG = false;
 			  continue;
@@ -570,7 +571,7 @@ command_t parser(token_stream* stream)
 			if (precedence(iter->type) > precedence(top_operator))
 			{
 			  push2(&operator_stack, iter->type);
-			  printf("Pushing %d!\n", iter->type);
+			  //printf("Pushing %d!\n", iter->type);
 			  iter = iter->next;
 			  CMD_FLAG = false;
 			  continue;
@@ -586,7 +587,7 @@ command_t parser(token_stream* stream)
 				pop(&command_stack);
 				command_t first_command = peek(&command_stack);
 				pop(&command_stack);
-				printf("combine operator: %d\n", operator);
+				//printf("combine operator: %d\n", operator);
 				command_t new_command = combineCommand(first_command, second_command, operator);
 				push(&command_stack, new_command);
 				top_operator = peek2(&operator_stack);
@@ -594,7 +595,7 @@ command_t parser(token_stream* stream)
 					break;
 			  }
 			  push2(&operator_stack, iter->type);
-			  printf("Pushing %d!\n", iter->type);
+			  //printf("Pushing %d!\n", iter->type);
 			  iter = iter->next;
 			  CMD_FLAG = false;
 			  continue;
@@ -617,9 +618,9 @@ command_t parser(token_stream* stream)
 	// left-over operators??????
 	if (operator_stack != NULL)
 	{
-    printf("Operator stack is not empty\n");
+    //printf("Operator stack is not empty\n");
 		int operator = peek2(&operator_stack);
-    printf("Operator: %d\n", operator);
+    //printf("Operator: %d\n", operator);
 		pop2(&operator_stack);
 		command_t second_command = peek(&command_stack);
 		pop(&command_stack);
@@ -630,7 +631,7 @@ command_t parser(token_stream* stream)
 	}
   else
   {
-    printf("Operator stack is empty\n");
+    //printf("Operator stack is empty\n");
     command_t second_command = peek(&command_stack);
     if (second_command != NULL)
     {
@@ -638,7 +639,7 @@ command_t parser(token_stream* stream)
       command_t first_command = peek(&command_stack);
       if (first_command != NULL)
       {
-        printf("Two commands, no operators\n");
+      //  printf("Two commands, no operators\n");
         /*
         command_t simple = (command_t) checked_malloc (sizeof(struct command));
         simple->type = SIMPLE_COMMAND;
@@ -665,10 +666,13 @@ command_t parser(token_stream* stream)
   //  printf("root: %s type: %d\n", root->u.word[0], root->type);
   //}
   if (root == NULL)
+  {
+    //printf("Nothing on commnad_stack\n");
     return NULL;
+  }
   else
   {
-    printf("root type: %d\n", root->type);
+    //printf("root type: %d\n", root->type);
     pop(&command_stack);
 
     return root;
@@ -909,7 +913,7 @@ make_command_stream (int (*get_next_byte) (void *),
 	token_stream* stream2 = stream;
 
 	size_t stream_counter = 0;
-
+/*
 
 	printf("Token stream %d size: %d\n", stream_counter, stream2->size);
 	size_t counter = 0;
@@ -917,7 +921,7 @@ make_command_stream (int (*get_next_byte) (void *),
 	token_Node* temp = stream2->head;
 	while (temp != NULL)
 	{
-		printf("Token %d: %s Type: %d\n ", counter, temp->string, temp->type);
+		printf("Token %d: %s Type: %d\n", counter, temp->string, temp->type);
 		counter++;
 
 		if (temp->next == NULL)
@@ -939,7 +943,7 @@ make_command_stream (int (*get_next_byte) (void *),
 		else
 			temp = temp->next;
 	}
-
+*/
 	command_stream_t cmd_stream = checked_malloc(sizeof(struct command_stream));
 	cmd_stream->size = -1;
 	cmd_stream->iterator = 0;
@@ -949,26 +953,65 @@ make_command_stream (int (*get_next_byte) (void *),
 	while (stream != NULL)
 	{
 		cmd_stream->size++;
-		cmd_stream->commands[cmd_stream->size] = parser(stream);
-    if (cmd_stream->commands[cmd_stream->size] != NULL)
-      printf("Type: %d\n", cmd_stream->commands[cmd_stream->size]->type);
-		printf("Next stream\n");
+		command_t newcommand = parser(stream);
+
+    // that means it was the last extra token we have at the end
+    if (newcommand == NULL)
+    {
+      break;
+    }
+    else
+		  cmd_stream->commands[cmd_stream->size] = newcommand;
+		// cmd_stream->commands[cmd_stream->size] = parser(stream);
+		//printf("Pos: %d ", cmd_stream->size);
+
+   // if (cmd_stream->commands[cmd_stream->size] != NULL)
+   //  	 printf("Command Type: %d\n", cmd_stream->commands[cmd_stream->size]->type);		// Should match root->type
+
+/*
+    size_t k;
+    for (k = 0; k < cmd_stream->size; k++)
+    {
+      printf("Command %d: ", k);
+      if (cmd_stream->commands[k]->type == AND_COMMAND)
+        {
+        printf("AND_COMMAND\n");
+        }
+      if (cmd_stream->commands[k]->type == OR_COMMAND)
+        printf("OR_COMMAND\n");
+      if (cmd_stream->commands[k]->type == PIPE_COMMAND)
+        printf("PIPE_COMMAND\n");
+      if (cmd_stream->commands[k]->type == SEQUENCE_COMMAND)
+        printf("SEQUENCE_COMMAND\n");
+      if (cmd_stream->commands[k]->type == SIMPLE_COMMAND)
+      {
+        printf("SIMPLE_COMMAND:\n");
+        printf("words[0]: %s\n", cmd_stream->commands[k]->u.word[0]);
+        //printf("words[1]: %s\n", cmd_stream->commands[k]->u.word[1]);
+        //printf("words[2]: %s\n", cmd_stream->commands[k]->u.word[2]);
+      }
+      if (cmd_stream->commands[k]->type == SUBSHELL_COMMAND)
+        printf("SUBSHELL_COMMAND\n");
+    }
+*/
+	//	printf("Next stream\n");
 		token_stream* toDelete = stream;
 		stream = (token_stream*)stream->next;
 		free(toDelete);
 	}
 
-
+  //printf("words[0]: %s\n, words[1]: %s\n words[2]: %s\n", cmd_stream->commands[0]->u.word[0], cmd_stream->commands[0]->u.word[1], cmd_stream->commands[0]->u.word[2]);
+/*
 	printf("cmd_stream size: %d\n", cmd_stream->size);
-	//printf("%s", cmd_stream->commands[k]->u.word[0]);
+
 	size_t k;
 	for (k = 0; k < cmd_stream->size; k++)
 	{
 		printf("Command %d: ", k);
 		if (cmd_stream->commands[k]->type == AND_COMMAND)
-    {
+   		{
 			printf("AND_COMMAND\n");
-    }
+   		}
 		if (cmd_stream->commands[k]->type == OR_COMMAND)
 			printf("OR_COMMAND\n");
 		if (cmd_stream->commands[k]->type == PIPE_COMMAND)
@@ -985,7 +1028,7 @@ make_command_stream (int (*get_next_byte) (void *),
 		if (cmd_stream->commands[k]->type == SUBSHELL_COMMAND)
 			printf("SUBSHELL_COMMAND\n");
 	}
-
+*/
 
 	free(buffer);
 	return cmd_stream;
