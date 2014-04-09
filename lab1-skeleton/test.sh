@@ -6,7 +6,14 @@ x < y
 
 d || e | f && g
 
-a;b
+a;bin
 
 echo
-world
+hello
+
+(echo world)
+
+(
+r < c
+
+)
