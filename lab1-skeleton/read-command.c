@@ -9,7 +9,6 @@
 #include <string.h>
 #include <stdlib.h>
 #include <ctype.h>
-#include <assert.h>
 
 #define INIT 0
 #define AND 1
@@ -426,7 +425,9 @@ command_t combineCommand(command_t first, command_t second, int operator)
     return newCommand;
     break;
     }
-    default: break;
+    default: 
+    return NULL;
+    break;
     }
 }
 
@@ -481,7 +482,7 @@ command_t parser(token_stream* stream)
             //printf("Simple->u.word[%d]: %s\n", (wordpos-1), simple->u.word[wordpos-1]);
             iter = iter->next;
             //printf("What's on the commandstack?\n");
-            command_t test = peek(&command_stack);
+            //command_t test = peek(&command_stack);
             //printf("Test: Type: %d Word[0]%s Word[1]%s\n", test->type, test->u.word[0], test->u.word[1]);
 
             continue;
@@ -508,7 +509,7 @@ command_t parser(token_stream* stream)
             //printf("Simple->u.word[%d]: %s\n", (wordpos-1), simple->u.word[wordpos-1]);
             iter = iter->next;
             //printf("What's on the commandstack?\n");
-            command_t test = peek(&command_stack);
+            //command_t test = peek(&command_stack);
             //printf("Test: Type: %d Word[0]%s Word[1]%s\n", test->type, test->u.word[0], test->u.word[1]);
 
             continue;
@@ -521,7 +522,7 @@ command_t parser(token_stream* stream)
         wordpos = 0;
         word_length = 0;
         push2(&operator_stack, iter->type);
-        int oper = peek2(&operator_stack);
+        //int oper = peek2(&operator_stack);
         //printf("On Operator stack: %d\n", oper);
         iter = iter->next;
         CMD_FLAG = false;
@@ -798,7 +799,7 @@ make_command_stream (int (*get_next_byte) (void *),
     size_t allocSize = 0;
     bool LINE_FLAG = true;      // Flags beginning of line, used to remove whitespace
     bool SUBSHELL_FLAG = false;
-    size_t num_lines = 1;
+    int num_lines = 1;
 
     while ((current = get_next_byte(get_next_byte_argument)) != EOF)
     {
@@ -814,7 +815,7 @@ make_command_stream (int (*get_next_byte) (void *),
         num_lines++;
 
     // operator cannot be first character in command
-    if ((BEGINNING_FLAG == 1) && ((current == '|') || (current == '<') || (current == '&') && (last == '\0')))
+    if ((BEGINNING_FLAG == 1) && (((current == '|') || (current == '<') || (current == '&')) && (last == '\0')))
     {
         fprintf(stderr, "%d: Invalid syntax\n", num_lines);
         exit(1);
@@ -1039,9 +1040,9 @@ make_command_stream (int (*get_next_byte) (void *),
     */
 
     token_stream* stream = tokenizer(buffer);
-    token_stream* stream2 = stream;
+    //token_stream* stream2 = stream;
 
-    size_t stream_counter = 0;
+   // size_t stream_counter = 0;
 
 /*
     printf("Token stream %d size: %d\n", stream_counter, stream2->size);
