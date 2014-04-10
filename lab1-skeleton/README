@@ -4,7 +4,7 @@ UID: 504043927
 Name: Kailin Chang
 UID: 503999157
 
-The only known limitation of our code is it fails test case 7.
+There are currently no known limitations based on the test cases.
 
 Our implementation of 1a can be divided into three main parts: 
 reading, tokenizing, parsing.
