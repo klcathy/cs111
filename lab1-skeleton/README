@@ -1,4 +1,19 @@
-This is a skeleton for CS 111 Lab 1.
+Name: Roger Chen
+UID: 504043927
 
-Replace this README file with notes on your implementation.
-Mentions any special features or limitations.
+Name: Kailin Chang
+UID: 503999157
+
+The only known limitation of our code is it fails test case 7.
+
+Our implementation of 1a can be divided into three main parts: 
+reading, tokenizing, parsing.
+For reading, we conducted syntax validation and separated command 
+trees by newlines and stored it in the buffer.
+For tokenizing, we used the fact that command trees were separated by
+newlines to tokenize them into token streams. The token streams had
+a pointer to the next token streams, so it was like a singly-linked 
+list. 
+We then parsed the token streams into the proper command tree and
+returned the root of it to be stored in an array located in the 
+command stream. 
