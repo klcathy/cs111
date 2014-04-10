@@ -440,9 +440,9 @@ command_t parser(token_stream* stream)
 
     if (stream->size == 0)
     {
-    fprintf(stderr, "%s\n", "NULL Stream");
+        //fprintf(stderr, "%s\n", "NULL Stream");
 
-    return NULL;
+        return NULL;
     }
 
     token_Node* iter = stream->head;
@@ -792,7 +792,9 @@ make_command_stream (int (*get_next_byte) (void *),
     char last_last_nospace = '\0';    // tracks the last previous nonspace char before last_nospace
     bool AND_FLAG = false;        // if && then true
     bool OR_FLAG = false;         // if || then true
+    bool REDIR_FLAG = false; 
     bool COMMENT_FLAG = false;
+    int BEGINNING_FLAG = 1; 
     size_t allocSize = 0;
     bool LINE_FLAG = true;      // Flags beginning of line, used to remove whitespace
     bool SUBSHELL_FLAG = false;
@@ -808,6 +810,19 @@ make_command_stream (int (*get_next_byte) (void *),
         error(1, 0, "Invalid character!");
     }
     */
+    if (current == '\n')
+        num_lines++;
+
+    // operator cannot be first character in command
+    if ((BEGINNING_FLAG == 1) && ((current == '|') || (current == '<') || (current == '&') && (last == '\0')))
+    {
+        fprintf(stderr, "%d: Invalid syntax\n", num_lines);
+        exit(1);
+    }
+
+    BEGINNING_FLAG = 0; 
+
+
     if (current == '(')
     {
         SUBSHELL_FLAG = true;
@@ -821,7 +836,6 @@ make_command_stream (int (*get_next_byte) (void *),
 
     if(current == '\n' && (last_nospace == '\0') && COMMENT_FLAG == false)
     {
-        num_lines++;  
         continue;
     }
     if ((current == ' ' || current == '\r') && (last_nospace == '\0') && COMMENT_FLAG == false)
@@ -829,9 +843,14 @@ make_command_stream (int (*get_next_byte) (void *),
         //printf("Skipping whitespace!\n");
         continue;
     }
-    if (current == ';' && (last_nospace == '\n' || last == '\0'))
+    if (current == ';' && (last == ';' || last_nospace == '\n' || last == '\0'))
     {
         //error(1, 0, "%d: Invalid semicolon!\n, num_lines");
+        fprintf(stderr, "%d: Invalid semicolon\n", num_lines);
+        exit(1);
+    }
+    if (current == '|' && (last_nospace == '\n' || last == '\0'))
+    {
         fprintf(stderr, "%d: Invalid semicolon\n", num_lines);
         exit(1);
     }
@@ -847,7 +866,14 @@ make_command_stream (int (*get_next_byte) (void *),
         //continue;
     }
 
-    // Check for &&& and |||
+    // checking for invalid character
+    if (current == '`')
+    {
+        fprintf(stderr, "%d: Invalid syntax\n", num_lines);
+        exit(1);
+    }
+
+    // Check for &&& and ||| and >>> and ;;
     if (AND_FLAG == true && current == '&')
     {
         fprintf(stderr, "%d: Invalid &\n", num_lines);
@@ -856,6 +882,11 @@ make_command_stream (int (*get_next_byte) (void *),
     if (OR_FLAG == true && current == '|')
     {
         fprintf(stderr, "%d: Invalid |\n", num_lines);
+        exit(1); 
+    }
+    if (REDIR_FLAG == true && current == '>')
+    {
+        fprintf(stderr, "%d: Invalid >\n", num_lines);
         exit(1); 
     }
 
@@ -869,6 +900,12 @@ make_command_stream (int (*get_next_byte) (void *),
         OR_FLAG = true;
     else
         OR_FLAG = false;
+
+    // Set flag to be true if >>
+    if (current == '>' && last == '>' && REDIR_FLAG == false)
+        REDIR_FLAG = true; 
+    else
+        REDIR_FLAG = false; 
 
     // Get rid of spaces between special tokens
     if ((current == '>' || current == '<' || current == '|' || current == '&') && last == ' ')
@@ -900,48 +937,45 @@ make_command_stream (int (*get_next_byte) (void *),
     if (current == '\n' && COMMENT_FLAG == true)
     {
         COMMENT_FLAG = false;
-        num_lines++;
         //printf("Changing COMMENT_FLAG to false!\n");
         continue;
     }
 
     if (current == '\n' && (last_nospace == '|' || last_nospace == '&'))
     {
-        num_lines++;
         LINE_FLAG = true;
         continue;
     }
 
     if (current == '\n' && (last_nospace == '>' || last_nospace == '<'))
     {
+        num_lines--; 
         fprintf(stderr, "%d: Invalid redirection\n", num_lines);
         exit(1); 
     }
 
-        if (current == '\n' && last == '\n')
-        {
-        num_lines++;
-        LINE_FLAG = true;
-        continue;
-        }
+    if (current == '\n' && last == '\n')
+    {
+    LINE_FLAG = true;
+    continue;
+    }
 
-        if (current == '\n' && SUBSHELL_FLAG == true)
-        {
-        num_lines++; 
-        continue;
-        }
+    if (current == '\n' && SUBSHELL_FLAG == true)
+    {
+    continue;
+    }
 
-        if (current == ')' && SUBSHELL_FLAG == true)
-        {
-        allocSize++;
-        buffer = checked_realloc(buffer, (2+allocSize)*sizeof(char));
-        size_t length = strlen(buffer); 
-        //printf("Buffer char%c", buffer[length]);
-        buffer[length] = current; 
-        buffer[length+1] = '\0'; 
-        SUBSHELL_FLAG = false;
-        continue;
-        }
+    if (current == ')' && SUBSHELL_FLAG == true)
+    {
+    allocSize++;
+    buffer = checked_realloc(buffer, (2+allocSize)*sizeof(char));
+    size_t length = strlen(buffer); 
+    //printf("Buffer char%c", buffer[length]);
+    buffer[length] = current; 
+    buffer[length+1] = '\0'; 
+    SUBSHELL_FLAG = false;
+    continue;
+    }
 
     if(!COMMENT_FLAG)
     {
@@ -971,8 +1005,14 @@ make_command_stream (int (*get_next_byte) (void *),
 
     }
 
-    // MAYBE \n SYNTAX VALIDATION???
+    // ghetto fix for detecting invalid ||
+    if (last == '|')
+    {
+        fprintf(stderr, "%d: Invalid syntax\n", num_lines);
+        exit(1); 
+    }
 
+    // MAYBE \n SYNTAX VALIDATION???
     if (last == ')' && unpair != 0)
     {
     fprintf(stderr, "%d: Unpaired parantheses\n", num_lines);

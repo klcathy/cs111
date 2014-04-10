@@ -21,26 +21,26 @@ test ! -s test0.err || {
 
 n=1
 for bad in \
-  '`' \               # Valid
-  '>' \               # Valid
-  '<' \               # Valid
-  'a >b <' \          # Valid
-  ';' \               # Valid
-  '; a' \             # Valid
-  'a ||' \            # Valid
+  '`' \
+  '>' \
+  '<' \
+  'a >b <' \
+  ';' \
+  '; a' \
+  'a ||' \
   'a
-     || b' \          # Valid, segfaults
+     || b' \
   'a
-     | b' \           # Valid, segfaults
+     | b' \
   'a
-     ; b' \           
-  'a;;b' \            # Valid, segfaults
+     ; b' \
+  'a;;b' \
   'a&&&b' \
   'a|||b' \
-  '|a' \              # Valid
-  '< a' \             # Valid
-  '&& a' \            # Valid
-  '||a' \             # Valid
+  '|a' \
+  '< a' \
+  '&& a' \
+  '||a' \
   '(a|b' \
   'a;b)' \
   '( (a)' \

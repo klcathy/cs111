@@ -37,7 +37,7 @@ cat >test.exp <<'EOF'
 # 2
   g++ -c foo.c
 # 3
- : : :
+  : : :
 # 4
       cat</etc/passwd \
     |
