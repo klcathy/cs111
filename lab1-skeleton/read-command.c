@@ -1,5 +1,15 @@
 // UCLA CS 111 Lab 1 command reading
 
+/* DESIGN PROJECT
+
+a >> b: Append a to b      
+<& : Takes in file descriptors and redirects?
+>& : Takes in file descriptors and redirects?
+j <> filename: Open filename for r/w, and assign file descriptor j to it 
+>| : Force redirection
+
+*/
+
 #include "command.h"
 #include "command-internals.h"
 #include "alloc.h"
