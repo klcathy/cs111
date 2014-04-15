@@ -3,8 +3,8 @@
 /* DESIGN PROJECT
 
 a >> b: Append a to b      
-<& : Takes in file descriptors and redirects?
->& : Takes in file descriptors and redirects?
+<& : Reverse of >&?
+>& output : Redirect stderr and stdout to file Equivalent to output > output 2>&1?     & causes output that goes to stderr to go to stdout
 j <> filename: Open filename for r/w, and assign file descriptor j to it 
 >| : Force redirection
 
@@ -31,6 +31,7 @@ j <> filename: Open filename for r/w, and assign file descriptor j to it
 #define LEFT_REDIR 8
 #define RIGHT_REDIR 9
 #define NEWLINE 10
+#define APPEND 11       // >>
 
 // Singly linked list of commands
 struct command_stream {
