@@ -1,19 +1,21 @@
 #! /bin/sh
 
-echo abc sup
+# UCLA CS Test Script
 
-x < y
 
-d || e | f && g
+echo Hello World | tr a-z A-Z | sort || echo sort failed
 
-a;bin
+echo Sup && echo dude | sort
 
-echo
-hello
+echo Hi > test.txt && cat < test.txt
 
-(echo world)
+echo Yo > test2.txt && cat test2.txt
 
-(
-r < c
+echo Bye > test3.txt && cat test3.txt | wc -w
 
-)
+(echo CS; echo 111) | wc -w
+
+(echo Operating; echo Systems && echo Principles)
+
+
+
