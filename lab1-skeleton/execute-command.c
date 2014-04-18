@@ -124,6 +124,18 @@ void executingSubshell(command_t c)
 
 void executingOr(command_t c)
 {
+	command_t left = c->u.command[0];
+	command_t right = c->u.command[1];
+	execute_command(left, false);
+	c->status = WEXITSTATUS(left->status);
+
+	// keep on executing a command until you execute one that succeeds (ie. returns 0)
+	// else until you reach the end
+	if (left->status == 1)
+	{
+		execute_command(right, false);
+		c->status = WEXITSTATUS(right->status);
+	}
 	return;
 }
 
