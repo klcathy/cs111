@@ -58,6 +58,9 @@ void execute_switch (command_t c)
 void executingSimple(command_t c)
 {
 	int status;
+	int inputRedir = -100;
+	int outputRedir = -100;
+
 	pid_t pid = fork();
 
 	if (pid < 0) // unsuccessful fork
@@ -75,7 +78,7 @@ void executingSimple(command_t c)
 		if (c->input != NULL)
 		{
 			//printf("There is an input\n");
-			int inputRedir = open(c->input, O_RDONLY | O_CREAT, 0644);
+			inputRedir = open(c->input, O_RDONLY | O_CREAT, 0644);
 			if (inputRedir < 0)
 				exit(1);
 			if (dup2(inputRedir, 0) < 0)
@@ -85,7 +88,7 @@ void executingSimple(command_t c)
 		if (c->output != NULL)
 		{
 			//printf("There is an output\n");
-			int outputRedir = open(c->output, O_WRONLY | O_TRUNC| O_CREAT, 0644);
+			outputRedir = open(c->output, O_WRONLY | O_TRUNC| O_CREAT, 0644);
 		  	if (outputRedir < 0)
 				exit(1);
 		  	if (dup2(outputRedir, 1) < 0)
@@ -94,7 +97,15 @@ void executingSimple(command_t c)
 
 		execvp(c->u.word[0], c->u.word);
 	}
+
 	c->status = WEXITSTATUS(status);
+
+	if (inputRedir > 0)
+		close(inputRedir);
+
+	if (outputRedir > 0)
+		close(outputRedir);
+
 	return;
 }
 
@@ -103,22 +114,25 @@ void executingAnd(command_t c)
 	command_t left = c->u.command[0];
 	command_t right = c->u.command[1];
 	execute_command(left, false);
-	c->status = WEXITSTATUS(left->status);
+	c->status = left->status;
 
 	if (left->status == 0)
 	{
 		execute_command(right, false);
-		c->status = WEXITSTATUS(right->status);
+		c->status = right->status;
 	}
 	return;
 }
 
 void executingSubshell(command_t c)
 {
+	int inputRedir = -100;
+	int outputRedir = -100;
+
 	if (c->input != NULL)
 	{
 		//printf("There is an input\n");
-		int inputRedir = open(c->input, O_RDONLY | O_CREAT, 0644);
+		inputRedir = open(c->input, O_RDONLY | O_CREAT, 0644);
 		if (inputRedir < 0)
 			exit(1);
 		if (dup2(inputRedir, 0) < 0)
@@ -128,7 +142,7 @@ void executingSubshell(command_t c)
 	if (c->output != NULL)
 	{
 		//printf("There is an output\n");
-		int outputRedir = open(c->output, O_WRONLY | O_TRUNC| O_CREAT, 0644);
+		outputRedir = open(c->output, O_WRONLY | O_TRUNC| O_CREAT, 0644);
 	  	if (outputRedir < 0)
 			exit(1);
 	  	if (dup2(outputRedir, 1) < 0)
@@ -137,6 +151,13 @@ void executingSubshell(command_t c)
 
 	execute_command(c->u.subshell_command, false); 
 	c->status = WEXITSTATUS((c->u.subshell_command)->status);
+
+	if (inputRedir > 0)
+		close(inputRedir);
+
+	if (outputRedir > 0)
+		close(outputRedir);
+	
 	return;
 }
 
@@ -145,14 +166,14 @@ void executingOr(command_t c)
 	command_t left = c->u.command[0];
 	command_t right = c->u.command[1];
 	execute_command(left, false);
-	c->status = WEXITSTATUS(left->status);
+	c->status = left->status;
 
 	// keep on executing a command until you execute one that succeeds (ie. returns 0)
 	// else until you reach the end
-	if (left->status == 1)
+	if (left->status != 0)
 	{
 		execute_command(right, false);
-		c->status = WEXITSTATUS(right->status);
+		c->status = right->status;
 	}
 	return;
 }
