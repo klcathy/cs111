@@ -60,21 +60,21 @@ void executingSimple(command_t c)
 	int status;
 	pid_t pid = fork();
 
-	if (pid < 0)
+	if (pid < 0) // unsuccessful fork
 	{
 		error (1, errno, "fork was unsuccesful\n");
 	}
 
-	if (pid == 1)
+	if (pid > 0) // parent process
 	{
-		printf("Parent\n");
-		exit(1);
+		//printf("Parent\n");
+		waitpid(pid, &status, 0);
 	}
-	else
+	else // child process
 	{
 		if (c->input != NULL)
 		{
-			printf("There is an input\n");
+			//printf("There is an input\n");
 			int inputRedir = open(c->input, O_RDONLY | O_CREAT, 0644);
 			if (inputRedir < 0)
 				exit(1);
@@ -84,7 +84,7 @@ void executingSimple(command_t c)
 
 		if (c->output != NULL)
 		{
-			printf("There is an output\n");
+			//printf("There is an output\n");
 			int outputRedir = open(c->output, O_WRONLY | O_TRUNC| O_CREAT, 0644);
 		  	if (outputRedir < 0)
 				exit(1);
@@ -92,14 +92,10 @@ void executingSimple(command_t c)
 				exit(1);
 		}
 
-		if (pid == 0)
-		  execvp(c->u.word[0], c->u.word);
-		else
-		  waitpid(pid, &status, 0);
-
-		c->status = WEXITSTATUS(status);
-		return;
+		execvp(c->u.word[0], c->u.word);
 	}
+	c->status = WEXITSTATUS(status);
+	return;
 }
 
 void executingAnd(command_t c)
@@ -119,6 +115,28 @@ void executingAnd(command_t c)
 
 void executingSubshell(command_t c)
 {
+	if (c->input != NULL)
+	{
+		//printf("There is an input\n");
+		int inputRedir = open(c->input, O_RDONLY | O_CREAT, 0644);
+		if (inputRedir < 0)
+			exit(1);
+		if (dup2(inputRedir, 0) < 0)
+			exit(1);
+	}
+
+	if (c->output != NULL)
+	{
+		//printf("There is an output\n");
+		int outputRedir = open(c->output, O_WRONLY | O_TRUNC| O_CREAT, 0644);
+	  	if (outputRedir < 0)
+			exit(1);
+	  	if (dup2(outputRedir, 1) < 0)
+			exit(1);
+	}
+
+	execute_command(c->u.subshell_command, false); 
+	c->status = WEXITSTATUS((c->u.subshell_command)->status);
 	return;
 }
 
@@ -141,6 +159,11 @@ void executingOr(command_t c)
 
 void executingSequence(command_t c)
 {
+	command_t left = c->u.command[0];
+	command_t right = c->u.command[1];
+	execute_command(left, false);
+	execute_command(right, false);
+	c->status = WEXITSTATUS(right->status);
 	return;
 }
 
