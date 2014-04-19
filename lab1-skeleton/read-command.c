@@ -764,41 +764,6 @@ command_t parser(token_stream* stream)
 
 }
 /*******************************************************************/
-bool isValid(char c)
-{
-    if (isalnum(c) || isspace(c))
-    return true;
-    switch (c) {
-    case '!':
-    case '%':
-    case '+':
-    case ',':
-    case '-':
-    case '.':
-    case '/':
-    case ':':
-    case '@':
-    case '^':
-    case '_':
-    case ';':
-    case '|':
-    case '&':
-    case '(':
-    case ')':
-    case '<':
-    case '>':
-    case '\n':
-    case '\t':
-    case '#':
-    case '\r':
-        return true;
-        break;
-    default:
-        return false;
-        break;
-    }
-}
-
 
 // FIX UNNCESSARY NEWLINES TOKENS (GHETTO FIXED)
 // SOME WEIRD SHIT HAPPENS IN COMMENTS E.G. #a;b --> INVALID SEMICOLON
@@ -827,207 +792,214 @@ make_command_stream (int (*get_next_byte) (void *),
 
     while ((current = get_next_byte(get_next_byte_argument)) != EOF)
     {
-    //printf("char: %c Numlines: %d\n", current, num_lines);
-    /*
-    if (!isValid(current))
-    {
-        printf("%c\n", current);
-        error(1, 0, "Invalid character!");
-    }
-    */
-    if (current == '\n')
-        num_lines++;
-
-    // operator cannot be first character in command
-    if ((BEGINNING_FLAG == 1) && (((current == '|') || (current == '<') || (current == '&')) && (last == '\0')))
-    {
-        fprintf(stderr, "%d: Invalid syntax\n", num_lines);
-        exit(1);
-    }
-
-    BEGINNING_FLAG = 0; 
-
-
-    if (current == '(')
-    {
-        SUBSHELL_FLAG = true;
-        unpair++;
-    }
-    if (current == ')')
-    {
-        SUBSHELL_FLAG = false;
-        unpair--;
-    }
-
-    if(current == '\n' && (last_nospace == '\0') && COMMENT_FLAG == false)
-    {
-        continue;
-    }
-    if ((current == ' ' || current == '\r') && (last_nospace == '\0') && COMMENT_FLAG == false)
-    {
-        //printf("Skipping whitespace!\n");
-        continue;
-    }
-    if (current == ';' && (last == ';' || last_nospace == '\n' || last == '\0'))
-    {
-        //error(1, 0, "%d: Invalid semicolon!\n, num_lines");
-        fprintf(stderr, "%d: Invalid semicolon\n", num_lines);
-        exit(1);
-    }
-    if (current == '|' && (last_nospace == '\n' || last == '\0'))
-    {
-        fprintf(stderr, "%d: Invalid semicolon\n", num_lines);
-        exit(1);
-    }
-    if ((current == '<' && last_nospace == '<' && last_last_nospace == '<') || (current == '>' && last_nospace == '>' && last_last_nospace == '>'))
-    {
-        fprintf(stderr, "%d: Invalid redirection\n", num_lines);
-        exit(1);
-    }
-    if (current == ';')
-    {
-        ;
-        //current = '\n';
-        //continue;
-    }
-
-    // checking for invalid character
-    if (current == '`')
-    {
-        fprintf(stderr, "%d: Invalid syntax\n", num_lines);
-        exit(1);
-    }
-
-    // Check for &&& and ||| and >>> and ;;
-    if (AND_FLAG == true && current == '&')
-    {
-        fprintf(stderr, "%d: Invalid &\n", num_lines);
-        exit(1);
-    }
-    if (OR_FLAG == true && current == '|')
-    {
-        fprintf(stderr, "%d: Invalid |\n", num_lines);
-        exit(1); 
-    }
-    if (REDIR_FLAG == true && current == '>')
-    {
-        fprintf(stderr, "%d: Invalid >\n", num_lines);
-        exit(1); 
-    }
-
-    // Set flag to be true if && or ||
-    if (current == '&' && last == '&' && AND_FLAG == false)
-        AND_FLAG = true;
-    else
-        AND_FLAG = false;
-
-    if (current == '|' && last == '|' && OR_FLAG == false)
-        OR_FLAG = true;
-    else
-        OR_FLAG = false;
-
-    // Set flag to be true if >>
-    if (current == '>' && last == '>' && REDIR_FLAG == false)
-        REDIR_FLAG = true; 
-    else
-        REDIR_FLAG = false; 
-
-    // Get rid of spaces between special tokens
-    if ((current == '>' || current == '<' || current == '|' || current == '&') && last == ' ')
-    {
-        size_t length = strlen(buffer);
-        buffer[length-1] = '\0';
-    }
-
-    if ((current == ' ') && (last == '>' || last == '<' || last == '|' || last == '&'))
-        continue;
-
-    // Comment after special token
-    if ((current == '#') && (last_nospace == '>' || last_nospace == '<' || last_nospace == '|' || last_nospace == '&'))
-    {
-        fprintf(stderr, "%d: Invalid comment\n", num_lines);
-        exit(1); 
-    }
-
-    if ((last == ' ' && current == ' ') || current == '\t' || (LINE_FLAG == true && current == ' '))
-        continue;
-
-    if (current == '#')
-    {
-        //printf("IN A COMMENT!\n");
-        COMMENT_FLAG = true;
-        continue;
-    }
-
-    if (current == '\n' && COMMENT_FLAG == true)
-    {
-        COMMENT_FLAG = false;
-        //printf("Changing COMMENT_FLAG to false!\n");
-        continue;
-    }
-
-    if (current == '\n' && (last_nospace == '|' || last_nospace == '&'))
-    {
-        LINE_FLAG = true;
-        continue;
-    }
-
-    if (current == '\n' && (last_nospace == '>' || last_nospace == '<'))
-    {
-        num_lines--; 
-        fprintf(stderr, "%d: Invalid redirection\n", num_lines);
-        exit(1); 
-    }
-
-    if (current == '\n' && last == '\n')
-    {
-	    LINE_FLAG = true;
-	    continue;
-    }
-
-    if (current == '\n' && SUBSHELL_FLAG == true)
-    {
-    	continue;
-    }
-
-    if (current == ')' && SUBSHELL_FLAG == true)
-    {
-	    allocSize++;
-	    buffer = checked_realloc(buffer, (2+allocSize)*sizeof(char));
-	    size_t length = strlen(buffer); 
-	    //printf("Buffer char%c", buffer[length]);
-	    buffer[length] = current; 
-	    buffer[length+1] = '\0'; 
-	    SUBSHELL_FLAG = false;
-	    continue;
-    }
-
-    if(!COMMENT_FLAG)
-    {
-        //printf("Not a comment!\n");
-        if (current != '\n')
-        LINE_FLAG = false;
-        else
-        LINE_FLAG = true;
-
-        allocSize++;
-        buffer = checked_realloc(buffer, (2+allocSize)*sizeof(char));   // 1 for null-byte and 1 for next char
-        //append
-        size_t length = strlen(buffer);
-        buffer[length] = current;
-        buffer[length+1] = '\0';
-        //printf("%c", buffer[length]);
-        //printf("\n");
-        last = current;
-        if (current != ' ')
+        if (!COMMENT_FLAG)
         {
-	        if (last_nospace != '\0')
-	            last_last_nospace = last_nospace;
+            if (current == '\n')
+                num_lines++;
 
-	        last_nospace = current;
+            // operator cannot be first character in command
+            if ((BEGINNING_FLAG == 1) && (((current == '|') || (current == '<') || (current == '&')) && (last == '\0')))
+            {
+                fprintf(stderr, "%d: Invalid syntax\n", num_lines);
+                exit(1);
+            }
+
+            BEGINNING_FLAG = 0; 
+
+
+            if (current == '(')
+            {
+                SUBSHELL_FLAG = true;
+                unpair++;
+            }
+            if (current == ')')
+            {
+                SUBSHELL_FLAG = false;
+                unpair--;
+            }
+
+            if(current == '\n' && (last_nospace == '\0') && COMMENT_FLAG == false)
+            {
+                continue;
+            }
+            if ((current == ' ' || current == '\r') && (last_nospace == '\0') && COMMENT_FLAG == false)
+            {
+                //printf("Skipping whitespace!\n");
+                continue;
+            }
+            if (current == ';' && (last == ';' || last_nospace == '\n' || last == '\0'))
+            {
+                //error(1, 0, "%d: Invalid semicolon!\n, num_lines");
+                fprintf(stderr, "%d: Invalid semicolon\n", num_lines);
+                exit(1);
+            }
+            if (current == '|' && (last_nospace == '\n' || last == '\0'))
+            {
+                fprintf(stderr, "%d: Invalid semicolon\n", num_lines);
+                exit(1);
+            }
+            if ((current == '<' && last_nospace == '<' && last_last_nospace == '<') || (current == '>' && last_nospace == '>' && last_last_nospace == '>'))
+            {
+                fprintf(stderr, "%d: Invalid redirection\n", num_lines);
+                exit(1);
+            }
+            if (current == ';')
+            {
+                ;
+                //current = '\n';
+                //continue;
+            }
+
+            // checking for invalid character
+            if (current == '`')
+            {
+                fprintf(stderr, "%d: Invalid syntax\n", num_lines);
+                exit(1);
+            }
+
+            // Check for &&& and ||| and >>> and ;;
+            if (AND_FLAG == true && current == '&')
+            {
+                fprintf(stderr, "%d: Invalid &\n", num_lines);
+                exit(1);
+            }
+            if (OR_FLAG == true && current == '|')
+            {
+                fprintf(stderr, "%d: Invalid |\n", num_lines);
+                exit(1); 
+            }
+            if (REDIR_FLAG == true && current == '>')
+            {
+                fprintf(stderr, "%d: Invalid >\n", num_lines);
+                exit(1); 
+            }
+
+            // Set flag to be true if && or ||
+            if (current == '&' && last == '&' && AND_FLAG == false)
+                AND_FLAG = true;
+            else
+                AND_FLAG = false;
+
+            if (current == '|' && last == '|' && OR_FLAG == false)
+                OR_FLAG = true;
+            else
+                OR_FLAG = false;
+
+            // Set flag to be true if >>
+            if (current == '>' && last == '>' && REDIR_FLAG == false)
+                REDIR_FLAG = true; 
+            else
+                REDIR_FLAG = false; 
+
+            // Get rid of spaces between special tokens
+            if ((current == '>' || current == '<' || current == '|' || current == '&') && last == ' ')
+            {
+                size_t length = strlen(buffer);
+                buffer[length-1] = '\0';
+            }
+
+            if ((current == ' ') && (last == '>' || last == '<' || last == '|' || last == '&'))
+                continue;
+
+            // Comment after special token
+            if ((current == '#') && (last_nospace == '>' || last_nospace == '<' || last_nospace == '|' || last_nospace == '&'))
+            {
+                fprintf(stderr, "%d: Invalid comment\n", num_lines);
+                exit(1); 
+            }
+
+            if ((last == ' ' && current == ' ') || current == '\t' || (LINE_FLAG == true && current == ' '))
+                continue;
+
+            if (current == '#')
+            {
+                //printf("IN A COMMENT!\n");
+                COMMENT_FLAG = true;
+                continue;
+            }
+
+            /*
+            if (current == '\n' && COMMENT_FLAG == true)
+            {
+                COMMENT_FLAG = false;
+                //printf("Changing COMMENT_FLAG to false!\n");
+                continue;
+            }
+            */
+
+            if (current == '\n' && (last_nospace == '|' || last_nospace == '&'))
+            {
+                LINE_FLAG = true;
+                continue;
+            }
+
+            if (current == '\n' && (last_nospace == '>' || last_nospace == '<'))
+            {
+                num_lines--; 
+                fprintf(stderr, "%d: Invalid redirection\n", num_lines);
+                exit(1); 
+            }
+
+            if (current == '\n' && last == '\n')
+            {
+        	    LINE_FLAG = true;
+        	    continue;
+            }
+
+            if (current == '\n' && SUBSHELL_FLAG == true)
+            {
+            	continue;
+            }
+
+            if (current == ')' && SUBSHELL_FLAG == true)
+            {
+        	    allocSize++;
+        	    buffer = checked_realloc(buffer, (2+allocSize)*sizeof(char));
+        	    size_t length = strlen(buffer); 
+        	    //printf("Buffer char%c", buffer[length]);
+        	    buffer[length] = current; 
+        	    buffer[length+1] = '\0'; 
+        	    SUBSHELL_FLAG = false;
+        	    continue;
+            }
+
+            if(!COMMENT_FLAG)
+            {
+                //printf("Not a comment!\n");
+                if (current != '\n')
+                LINE_FLAG = false;
+                else
+                LINE_FLAG = true;
+
+                allocSize++;
+                buffer = checked_realloc(buffer, (2+allocSize)*sizeof(char));   // 1 for null-byte and 1 for next char
+                //append
+                size_t length = strlen(buffer);
+                buffer[length] = current;
+                buffer[length+1] = '\0';
+                //printf("%c", buffer[length]);
+                //printf("\n");
+                last = current;
+                if (current != ' ')
+                {
+        	        if (last_nospace != '\0')
+        	            last_last_nospace = last_nospace;
+
+        	        last_nospace = current;
+                }
+            }
         }
-    }
-
+        else
+        {
+            if (current == '\n' && COMMENT_FLAG == true)
+            {
+                COMMENT_FLAG = false;
+                //printf("Changing COMMENT_FLAG to false!\n");
+                continue;
+            }
+            else
+                continue;
+        }
     }
 
     // ghetto fix for detecting invalid ||
@@ -1064,7 +1036,7 @@ make_command_stream (int (*get_next_byte) (void *),
 
     token_stream* stream = tokenizer(buffer);
 
-/*  token_stream* stream2 = stream;
+    /*token_stream* stream2 = stream;
 
 
     int stream_counter = 0;
@@ -1097,8 +1069,8 @@ make_command_stream (int (*get_next_byte) (void *),
         }
         else
             temp = temp->next;
-    }
- */   
+    }*/
+   
     
 
     command_stream_t cmd_stream = checked_malloc(sizeof(struct command_stream));
@@ -1238,34 +1210,59 @@ make_command_stream (int (*get_next_byte) (void *),
     }
 
     //printf("words[0]: %s\n, words[1]: %s\n words[2]: %s\n", cmd_stream->commands[0]->u.word[0], cmd_stream->commands[0]->u.word[1], cmd_stream->commands[0]->u.word[2]);
-/*
-    printf("cmd_stream size: %d\n", cmd_stream->size);
 
-    size_t k;
+    /*printf("cmd_stream size: %d\n", cmd_stream->size);
+
+    int k;
     for (k = 0; k < cmd_stream->size; k++)
     {
-    printf("Command %d: ", k);
-    if (cmd_stream->commands[k]->type == AND_COMMAND)
+        printf("Command %d: ", k);
+        if (cmd_stream->commands[k]->type == AND_COMMAND)
         {
-        printf("AND_COMMAND\n");
+            printf("AND_COMMAND\n");
         }
-    if (cmd_stream->commands[k]->type == OR_COMMAND)
-        printf("OR_COMMAND\n");
-    if (cmd_stream->commands[k]->type == PIPE_COMMAND)
-        printf("PIPE_COMMAND\n");
-    if (cmd_stream->commands[k]->type == SEQUENCE_COMMAND)
-        printf("SEQUENCE_COMMAND\n");
-    if (cmd_stream->commands[k]->type == SIMPLE_COMMAND)
-    {
-        printf("SIMPLE_COMMAND:\n");
-        printf("words[0]: %s\n", cmd_stream->commands[k]->u.word[0]);
-        //printf("words[1]: %s\n", cmd_stream->commands[k]->u.word[1]);
-        //printf("words[2]: %s\n", cmd_stream->commands[k]->u.word[2]);
-    }
-    if (cmd_stream->commands[k]->type == SUBSHELL_COMMAND)
-        printf("SUBSHELL_COMMAND\n");
-    }
-*/
+        if (cmd_stream->commands[k]->type == OR_COMMAND)
+            printf("OR_COMMAND\n");
+        if (cmd_stream->commands[k]->type == PIPE_COMMAND)
+            printf("PIPE_COMMAND\n");
+        if (cmd_stream->commands[k]->type == SEQUENCE_COMMAND)
+            printf("SEQUENCE_COMMAND\n");
+        if (cmd_stream->commands[k]->type == SIMPLE_COMMAND)
+        {
+            printf("SIMPLE_COMMAND:\n");
+            printf("words[0]: %s\n", cmd_stream->commands[k]->u.word[0]);
+            //printf("words[1]: %s\n", cmd_stream->commands[k]->u.word[1]);
+            //printf("words[2]: %s\n", cmd_stream->commands[k]->u.word[2]);
+        }
+        if (cmd_stream->commands[k]->type == SUBSHELL_COMMAND)
+        {
+            printf("SUBSHELL_COMMAND\n");
+            command_t inner = cmd_stream->commands[k]->u.subshell_command;
+            if (inner->type == SIMPLE_COMMAND)
+            {
+                printf("inner SIMPLE_COMMAND\n");
+                if (inner->input != NULL)
+                {
+                    printf("inner input not null\n");
+                }
+                if (inner->output != NULL)
+                {
+                    printf("inner output not null\n");
+                }
+            }
+            if (cmd_stream->commands[k]->input != NULL)
+            {
+                printf("subshell input not null\n");
+                printf("input: %s\n", cmd_stream->commands[k]->input);
+            }
+            if (cmd_stream->commands[k]->output != NULL)
+            {
+                printf("subshell output not null\n");
+                printf("output: %s\n", cmd_stream->commands[k]->output);
+            }
+        }
+    }*/
+
 
     free(buffer);
     return cmd_stream;

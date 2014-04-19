@@ -78,7 +78,7 @@ void executingSimple(command_t c)
 		if (c->input != NULL)
 		{
 			//printf("There is an input\n");
-			inputRedir = open(c->input, O_RDONLY | O_CREAT, 0644);
+			inputRedir = open(c->input, O_RDONLY, 0644);
 			if (inputRedir < 0)
 				exit(1);
 			if (dup2(inputRedir, 0) < 0)
@@ -132,7 +132,7 @@ void executingSubshell(command_t c)
 	if (c->input != NULL)
 	{
 		//printf("There is an input\n");
-		inputRedir = open(c->input, O_RDONLY | O_CREAT, 0644);
+		inputRedir = open(c->input, O_RDONLY, 0644);
 		if (inputRedir < 0)
 			exit(1);
 		if (dup2(inputRedir, 0) < 0)
@@ -150,7 +150,7 @@ void executingSubshell(command_t c)
 	}
 
 	execute_command(c->u.subshell_command, false); 
-	c->status = WEXITSTATUS((c->u.subshell_command)->status);
+	c->status = (c->u.subshell_command)->status;
 
 	if (inputRedir > 0)
 		close(inputRedir);
