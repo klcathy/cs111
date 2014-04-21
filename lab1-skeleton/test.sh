@@ -2,32 +2,98 @@
 
 # UCLA CS Test Script
 
-# echo OrWorks || echo OrNot
+# Semicolons
+:
+      :
+: : :
 
-# echo Hello World | tr a-z A-Z | sort || echo sort failed
+# Simple Commands
 
-# echo Sup && echo dude | sort
+expr 1 + 3 - 4 / 2
 
-# echo Hi > test.txt && cat < test.txt
+# AND Commands
 
-# echo Hello > test0.txt
+echo And1 && echo And2
 
-# echo Byte > test1.txt && cat test1.txt | wc -w
+# OR Commands
 
-# echo seq1; echo seq2
+cat < DOESNOTEXIST || echo Alternative
 
-# (echo CS; echo 111) | wc -w
+echo OrWorks || echo OrNot
 
-# (echo Operating; echo Systems && echo Principles)
+# Sequence Commands
 
-# cat /usr/share/dict/words | head -n 20 > pipetemp.txt
+echo seq1; echo seq2
 
-# head -n 5 < pipetemp.txt > pipeout.txt
+# Pipe Commands
 
-# cat pipeout.txt
+echo first | echo second | echo third
+ls | sort -r | cat
 
-cat /usr/share/dict/words | head -n 20 > testwords.txt
+cat /usr/share/dict/words | head -n 20 > pipetemp.txt
 
-(head -n 5) < testwords.txt > testsort.txt
+head -n 5 < pipetemp.txt > pipeout.txt
 
-cat testsort.txt
+cat pipeout.txt
+
+# I/O Redirection
+
+echo first file > test2.txt
+
+cat test2.txt
+
+(cat) < test2.txt
+
+echo overwrite > test2.txt
+
+cat test2.txt
+
+cat < test2.txt
+
+cat < DOESNOTEXIST
+
+# Mixed commands
+
+echo Hello World | tr a-z A-Z | sort || echo sort failed
+
+echo Sup && echo dude | sort
+
+echo Hi > test.txt && cat < test.txt
+
+echo Byte > test1.txt && cat test1.txt | wc -w
+
+(echo CS; echo 111) | wc -w
+
+(echo Operating; echo Systems && echo Principles)
+
+echo Roger || echo Chen && echo Kailin
+
+
+# cat /usr/share/dict/words | head -n 20 > testwords.txt
+
+# (head -n 5) < testwords.txt > testsort.txt
+
+# cat testsort.txt
+
+# Bad Commands
+
+km
+
+gh
+
+ls -29133
+
+cp
+
+cp DOESNOTEXIT
+
+
+# Cleanup
+
+rm test.txt
+rm test1.txt
+rm test2.txt
+rm pipetemp.txt
+rm pipeout.txt
+
+ls

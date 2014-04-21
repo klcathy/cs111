@@ -58,8 +58,6 @@ void execute_switch (command_t c)
 void executingSimple(command_t c)
 {
 	int status;
-	int inputRedir = -100;
-	int outputRedir = -100;
 
 	pid_t pid = fork();
 
@@ -72,39 +70,51 @@ void executingSimple(command_t c)
 	{
 		//printf("Parent\n");
 		waitpid(pid, &status, 0);
+		c->status = WEXITSTATUS(status);
 	}
 	else // child process
 	{
 		if (c->input != NULL)
 		{
 			//printf("There is an input\n");
-			inputRedir = open(c->input, O_RDONLY, 0644);
+			int inputRedir = open(c->input, O_RDONLY, 0644);
 			if (inputRedir < 0)
-				exit(1);
+			{
+				error(1, 0, "Unable to open inputfile");
+			}
 			if (dup2(inputRedir, 0) < 0)
-				exit(1);
+			{
+				error(1, 0, "Unable to use dup2");
+			}
+			if  (close(inputRedir) < 0)
+			{
+				error(1, 0, "Problem closing input file");
+			}
 		}
 
 		if (c->output != NULL)
 		{
 			//printf("There is an output\n");
-			outputRedir = open(c->output, O_WRONLY | O_TRUNC| O_CREAT, 0644);
+			int outputRedir = open(c->output, O_WRONLY | O_TRUNC| O_CREAT, 0644);
 		  	if (outputRedir < 0)
-				exit(1);
+				error(1, 0, "Unable to open outputfile");
 		  	if (dup2(outputRedir, 1) < 0)
-				exit(1);
+				error(1, 0, "Unable to use dup2");
+			if (close(outputRedir) < 0)
+			{
+				error(1, 0, "Problem closing output file");
+			}
 		}
 
-		execvp(c->u.word[0], c->u.word);
+		// want to exit out of a : command
+		if(c->u.word[0][0] == ':')
+			_exit(0);
+
+		if(execvp(c->u.word[0], c->u.word) < 0)
+		{
+			error(1, 0, "Error executing command");
+		}
 	}
-
-	c->status = WEXITSTATUS(status);
-
-	if (inputRedir > 0)
-		close(inputRedir);
-
-	if (outputRedir > 0)
-		close(outputRedir);
 
 	return;
 }
@@ -126,38 +136,37 @@ void executingAnd(command_t c)
 
 void executingSubshell(command_t c)
 {
-	int inputRedir = -100;
-	int outputRedir = -100;
 
 	if (c->input != NULL)
 	{
 		//printf("There is an input\n");
-		inputRedir = open(c->input, O_RDONLY, 0644);
+		int inputRedir = open(c->input, O_RDONLY, 0644);
 		if (inputRedir < 0)
-			exit(1);
+			error(1, 0, "Unable to open inputfile");
 		if (dup2(inputRedir, 0) < 0)
-			exit(1);
+			error(1, 0, "Unable to use dup2");
+		if  (close(inputRedir) < 0)
+		{
+			error(1, 0, "Problem closing input file");
+		}
 	}
 
 	if (c->output != NULL)
 	{
 		//printf("There is an output\n");
-		outputRedir = open(c->output, O_WRONLY | O_TRUNC| O_CREAT, 0644);
+		int outputRedir = open(c->output, O_WRONLY | O_TRUNC| O_CREAT, 0644);
 	  	if (outputRedir < 0)
-			exit(1);
+			error(1, 0, "Unable to open outputfile");
 	  	if (dup2(outputRedir, 1) < 0)
-			exit(1);
+			error(1, 0, "Unable to use dup2");
+		if (close(outputRedir) < 0)
+		{
+			error(1, 0, "Problem closing output file");
+		}
 	}
 
 	execute_command(c->u.subshell_command, false); 
-	c->status = (c->u.subshell_command)->status;
-
-	if (inputRedir > 0)
-		close(inputRedir);
-
-	if (outputRedir > 0)
-		close(outputRedir);
-	
+	c->status = c->u.subshell_command->status;
 	return;
 }
 
@@ -184,7 +193,7 @@ void executingSequence(command_t c)
 	command_t right = c->u.command[1];
 	execute_command(left, false);
 	execute_command(right, false);
-	c->status = WEXITSTATUS(right->status);
+	c->status = right->status;
 	return;
 }
 
