@@ -22,6 +22,90 @@ void executingOr(command_t c);
 void executingSequence(command_t c);
 void executingPipe(command_t c);
 
+// Circular Queue
+typedef struct Queue
+{
+	int size;
+	int capacity;
+	int front;
+	int back;
+	int *elements;
+} MyQueue;
+
+/*
+	Creates a queue.
+*/
+MyQueue* createQueue(int cap)
+{
+	MyQueue	*queue = (MyQueue*) malloc(sizeof(MyQueue));
+
+	queue->elements = (int*) malloc(sizeof(int) * cap);
+	queue->size = 0;
+	queue->capacity = cap;
+	queue->front = 0;
+	queue->back = -1;
+
+	return queue;
+}
+
+/*
+	Removes the front element from the queue.
+*/
+void pop(MyQueue* queue)
+{
+	if (queue->size == 0)
+	{
+		printf("Empty!\n");
+		return;
+	}
+	else
+	{
+		queue->size--;
+		queue->front++;
+
+		if (queue->front == queue->capacity)
+			queue->front = 0;
+	}
+}
+
+/*
+	Returns the front element of the queue.
+*/
+int front(MyQueue* queue)
+{
+	if (queue->size == 0)
+	{
+		printf("Empty!\n");
+		exit(0);
+	}
+
+	return queue->elements[queue->front];
+}
+
+/*
+	Inserts element to the back of the queue.
+*/
+
+void push(MyQueue* queue, int element)
+{
+	if (queue->size == queue->capacity)
+	{
+		printf("Queue is full!\n");
+		return;
+	}
+	else
+	{
+		queue->size++;
+		queue->rear = queue->rear + 1;
+
+		if (queue->back == queue->capacity)
+			queue->back = 0;
+
+		queue->elements[queue->back] = element;
+	}
+	return;
+}
+
 int
 command_status (command_t c)
 {
