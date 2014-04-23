@@ -22,6 +22,8 @@ void executingOr(command_t c);
 void executingSequence(command_t c);
 void executingPipe(command_t c);
 
+/* QUEUE DATA STRUCTURE */
+
 // Circular Queue
 typedef struct Queue
 {
@@ -105,6 +107,8 @@ void push(MyQueue* queue, int element)
 	}
 	return;
 }
+
+/* LAB 1B IMPLEMENTATION */
 
 int
 command_status (command_t c)
@@ -368,4 +372,12 @@ execute_command (command_t c, bool time_travel)
 {
  	if (time_travel == false)
  		execute_switch(c);
+}
+
+
+/* LAB 1C IMPLEMENTATION */
+
+command_t run_time_travel (command_stream_t stream)
+{
+	
 }
