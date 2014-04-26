@@ -418,7 +418,7 @@ void insert(myList* list, myNode* node)
 
 typedef struct {
 	command_t command;
-	struct GraphNode** before;
+	struct GraphNodeStream* before;
 	pid_t pid;
 } GraphNode;
 
@@ -438,6 +438,11 @@ typedef struct {
 	struct ListNode* head;
 	int size;
 } myList2;
+
+typedef struct {
+	struct GraphNode** gn_arr; 
+	int size; 
+} GraphNodeStream; 
 
 /*
 	Inserts at beginning.
@@ -464,6 +469,56 @@ void insert2(myList2* list, ListNode* node)
 
 }
 
+void insert3(GraphNodeStream* s, GraphNode* node)
+{
+	s->gn_arr[size] = node; 
+	s->size++; 
+	s->gn_arr = checked_realloc(s->gn_arr, (s->size)*sizeof(struct GraphNode*)); 
+}
+
+void processCommandHelper(command_t command, myList* readList, myList* writeList, GraphNode* g_node)
+{
+	if (command->type == SIMPLE_COMMAND)
+	{
+		//Still need to add words
+		g_node->command[1] = command->u.word[1]; 
+
+		if (command->input != NULL)
+		{
+			myNode* tempNode = (myNode*) checked_malloc(sizeof(myNode));
+			tempNode->next = NULL; 
+			tempNode->data = command->input; 
+			insert(readList, tempNode);
+		}
+	}
+
+	else if (command->type == SUBSHELL_COMMAND)
+	{
+		if (command->input != NULL)
+		{
+			myNode* tempNode = (myNode*) checked_malloc(sizeof(myNode)); 
+			tempNode->next = NULL; 
+			tempNode->data = command->input; 
+			insert(readList, tempNode);
+		}
+
+		if (command->output != NULL)
+		{
+			myNode* tempNode = (myNode*) checked_malloc(sizeof(myNode));
+			tempNode->next = NULL; 
+			tempNode->data = command->output; 
+			insert(writeList, tempNode);
+		}
+		processCommandHelper(command->u.subshell_command); 
+	}
+
+	else 
+	{
+		processCommandHelper(command->u.command[0]);
+		processCommandHelper(command->u.command[1]);
+	}
+} 
+
 ListNode* processCommand(command_t command)
 {
 	myList* readList = (myList*) checked_malloc (sizeof(myList)); 
@@ -476,44 +531,24 @@ ListNode* processCommand(command_t command)
 	writeList->tail = NULL; 
 	writeList->size = 0; 
 
-	if (command->type == SIMPLE_COMMAND)
-	{
-		// Still need to add words
+	GraphNodeStream* gnstream = (GraphNodeStream*) checked_malloc (sizeof(GraphNodeStream));
+	gnstream->size = 0; 
+	gnstream->gn_arr = checked_malloc(sizeof(GraphNode*)); 
 
-		if (command->input != NULL)
-		{
-			myNode* tempNode = (myNode*) checked_malloc(sizeof(myNode));; 
-			tempNode->next = NULL; 
-			tempNode->data = command->input; 
-			insert(readList, tempNode);
-		}
-	}
+	GraphNode* g_node = (GraphNode*) checked_malloc (sizeof(GraphNode));
+	g_node->pid = -1;
+	g_node->before = gnstream;  
 
-	else if (command->type == SUBSHELL_COMMAND)
-	{
-		if (command->input != NULL)
-		{
-			myNode* tempNode = (myNode*) checked_malloc(sizeof(myNode));; 
-			tempNode->next = NULL; 
-			tempNode->data = command->input; 
-			insert(readList, tempNode);
-		}
+	ListNode* newNode = (ListNode*) checked_malloc(sizeof(ListNode));
 
-		if (command->output != NULL)
-		{
-			myNode* tempNode = (myNode*) checked_malloc(sizeof(myNode));; 
-			tempNode->next = NULL; 
-			tempNode->data = command->output; 
-			insert(writeList, tempNode);
-		}
-		processCommand(command->u.subshell_command); 
-	}
+	processCommandHelper(command, readList, writeList, g_node); 
 
-	else 
-	{
-		processCommand(command->u.command[0]);
-		processCommand(command->u.command[1]);
-	}
+	newNode->readList = readList; 
+	newNode->writeList = writeList; 
+	newNode->next = NULL; 
+	newNode->g_node = g_node; 
+
+	return newNode; 
 }
 
 /*
@@ -563,7 +598,7 @@ DependencyGraph* createGraph(command_stream_t s)
 				intersect(newListNode->writeList, iter->readList) == true ||
 				intersect(newListNode->writeList, iter->writeList) == true )
 				{
-					//newListNode->GraphNode->before->insert(i->GraphNode);
+					insert3(newListNode->g_node->before, iter->g_node);
 				}
 
 			iter = iter->next;
