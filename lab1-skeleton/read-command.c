@@ -471,6 +471,7 @@ command_t parser(token_stream* stream)
     myOperatorStack operator_stack = NULL;
     size_t wordpos = 0;
     size_t word_length = 0;
+
     bool CMD_FLAG = false;
 
     while (iter != NULL)
@@ -496,6 +497,7 @@ command_t parser(token_stream* stream)
 	            simple->u.word[wordpos] = iter->string;
 	            simple->u.word[++wordpos] = NULL;
 	            word_length += 2;
+                simple->u.word_size = word_length; 
 	            CMD_FLAG = true;
 	            push(&command_stack, simple);
 	            //printf("Simple->u.word[%d]: %s\n", (wordpos-1), simple->u.word[wordpos-1]);
@@ -522,6 +524,7 @@ command_t parser(token_stream* stream)
 
 	            simple->u.word[++wordpos] = NULL;
 	            word_length++;
+                simple->u.word_size = word_length; 
 	            push(&command_stack, simple);
 
 	            //printf("Simple->u.word[0]: %s\n", simple->u.word[0]);

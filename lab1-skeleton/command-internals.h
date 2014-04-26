@@ -29,6 +29,7 @@ struct command
 
     // for SIMPLE_COMMAND:
     char **word;
+    int word_size; 
 
     // for SUBSHELL_COMMAND:
     struct command *subshell_command;
