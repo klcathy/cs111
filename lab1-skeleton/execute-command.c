@@ -377,6 +377,8 @@ void push(MyQueue* queue, GraphNode element)
 	return;
 }
 
+/********************* LIST STRUCTURE TO FOR READ/WRITELIST ******************/
+
 typedef struct {
 	struct myNode* next;
 	char* data;
@@ -388,7 +390,9 @@ typedef struct {
 	int size;
 } myList;
 
-
+/*
+	Inserts at tail.
+*/
 void insert(myList* list, myNode* node)
 {
 	myNode* temp = (myNode*) checked_malloc(sizeof(myNode));
@@ -410,57 +414,7 @@ void insert(myList* list, myNode* node)
 	return;
 }
 
-void processCommand(command_t command)
-{
-	myList readList; 
-	readList.head = NULL;
-	readList.tail = NULL; 
-	readList.size = 0; 
-
-	myList writeList; 
-	writeList.head = NULL;
-	writeList.tail = NULL; 
-	writeList.size = 0; 
-
-	if (command->type == SIMPLE_COMMAND)
-	{
-		//command->u.word, how to access size?
-
-		if (command->input != NULL)
-		{
-			myNode* tempNode = (myNode*) checked_malloc(sizeof(myNode));; 
-			tempNode.next = NULL; 
-			tempNode.data = command->input; 
-			insert(readList, tempNode);
-		}
-	}
-
-	else if (command->type == SUBSHELL_COMMAND)
-	{
-		if (command->input != NULL)
-		{
-			myNode* tempNode = (myNode*) checked_malloc(sizeof(myNode));; 
-			tempNode.next = NULL; 
-			tempNode.data = command->input; 
-			insert(readList, tempNode);
-		}
-
-		if (command->output != NULL)
-		{
-			myNode* tempNode = (myNode*) checked_malloc(sizeof(myNode));; 
-			tempNode.next = NULL; 
-			tempNode.data = command->output; 
-			insert(writeList, tempNode);
-		}
-		processCommand(command->u.subshell_command); 
-	}
-
-	else 
-	{
-		processCommand(command->u.command[0]);
-		processCommand(command->u.command[1]);
-	}
-}
+/***************** LIST STRUCTURE FOR LISTNODES ******************************/
 
 typedef struct {
 	command_t command;
@@ -474,16 +428,152 @@ typedef struct {
 } DependencyGraph;
 
 typedef struct {
-	GraphNode* m_node;
-
+	GraphNode* g_node;
+	myList* readList;
+	myList* writeList;
+	ListNode* next;
 } ListNode;
+
+typedef struct {
+	struct ListNode* head;
+	int size;
+} myList2;
+
+/*
+	Inserts at beginning.
+*/
+void insert2(myList2* list, ListNode* node)
+{
+	ListNode* temp = (ListNode*) checked_malloc (sizeof(ListNode));
+	temp->readList = node->readList;
+	temp->writeList = node->writeList;
+
+	if (list->head == NULL)
+	{
+		temp->next = NULL;
+		list->head = temp;
+	}
+	else
+	{
+		temp->next = list->head;
+		list->head = temp;
+	}
+
+	list->size++;
+	return;
+
+}
+
+ListNode* processCommand(command_t command)
+{
+	myList* readList = (myList*) checked_malloc (sizeof(myList)); 
+	readList->head = NULL;
+	readList->tail = NULL; 
+	readList->size = 0; 
+
+	myList* writeList = (myList*) checked_malloc (sizeof(myList)); 
+	writeList->head = NULL;
+	writeList->tail = NULL; 
+	writeList->size = 0; 
+
+	if (command->type == SIMPLE_COMMAND)
+	{
+		// Still need to add words
+
+		if (command->input != NULL)
+		{
+			myNode* tempNode = (myNode*) checked_malloc(sizeof(myNode));; 
+			tempNode->next = NULL; 
+			tempNode->data = command->input; 
+			insert(readList, tempNode);
+		}
+	}
+
+	else if (command->type == SUBSHELL_COMMAND)
+	{
+		if (command->input != NULL)
+		{
+			myNode* tempNode = (myNode*) checked_malloc(sizeof(myNode));; 
+			tempNode->next = NULL; 
+			tempNode->data = command->input; 
+			insert(readList, tempNode);
+		}
+
+		if (command->output != NULL)
+		{
+			myNode* tempNode = (myNode*) checked_malloc(sizeof(myNode));; 
+			tempNode->next = NULL; 
+			tempNode->data = command->output; 
+			insert(writeList, tempNode);
+		}
+		processCommand(command->u.subshell_command); 
+	}
+
+	else 
+	{
+		processCommand(command->u.command[0]);
+		processCommand(command->u.command[1]);
+	}
+}
+
+/*
+	Checks to see if list1 and list2 share any nodes.
+	Returns true if they do, else false.
+*/
+
+bool intersect(myList* list1, myList* list2)
+{
+	myNode iter1 = list1->head;
+	myNode iter2 = list2->head;
+
+	for ( ; iter1 != NULL; iter1 = iter1->next)
+	{
+		for ( ; iter2 != NULL; iter2 = iter2->next)
+		{
+			if (iter1->data == iter2->data)
+				return true;
+		}
+	}
+
+	return false;
+}
 
 DependencyGraph* createGraph(command_stream_t s)
 {
 	int i; 
-	for (i = 0; i < s->size; i++)
+
+	DependencyGraph* graph = (DependencyGraph*) checked_malloc(sizeof(DependencyGraph));
+	graph->no_dependency = checked_malloc(sizeof(MyQueue));
+	graph->dependency = checked_malloc(sizeof(MyQueue));
+
+	myList2* list = (myList2*) checked_malloc(sizeof(myList2));
+	list->head = NULL;
+	list->size = 0;
+
+ 	for (i = 0; i < s->size; i++)
 	{
-		processCommand
+		ListNode* newListNode = processCommand(s->commands[i]);
+		insert2(list, newListNode);
+
+		ListNode iter = list->head->next;
+
+		while (iter != NULL)
+		{
+			if (intersect(newListNode->readList, iter->writeList) == true ||
+				intersect(newListNode->writeList, iter->readList) == true ||
+				intersect(newListNode->writeList, iter->writeList) == true )
+				{
+					//newListNode->GraphNode->before->insert(i->GraphNode);
+				}
+
+			iter = iter->next;
+		}
+
+		if (newListNode->g_node->before == NULL)
+			push(graph->no_dependency, newListNode->g_node);
+		else
+			push(graph->dependency, newListNode->g_node);
+
 	}
 }
 
