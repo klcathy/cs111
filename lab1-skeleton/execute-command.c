@@ -1,4 +1,4 @@
-// UCLA CS 111 Lab 1 command execution
+// UCLA CS 111 Lab 1 command execu
 
 #include "command.h"
 #include "command-internals.h"
@@ -22,93 +22,7 @@ void executingOr(command_t c);
 void executingSequence(command_t c);
 void executingPipe(command_t c);
 
-/* QUEUE DATA STRUCTURE */
-
-// Circular Queue
-typedef struct Queue
-{
-	int size;
-	int capacity;
-	int front;
-	int back;
-	int *elements;
-} MyQueue;
-
-/*
-	Creates a queue.
-*/
-MyQueue* createQueue(int cap)
-{
-	MyQueue	*queue = (MyQueue*) malloc(sizeof(MyQueue));
-
-	queue->elements = (int*) malloc(sizeof(int) * cap);
-	queue->size = 0;
-	queue->capacity = cap;
-	queue->front = 0;
-	queue->back = -1;
-
-	return queue;
-}
-
-/*
-	Removes the front element from the queue.
-*/
-void pop(MyQueue* queue)
-{
-	if (queue->size == 0)
-	{
-		printf("Empty!\n");
-		return;
-	}
-	else
-	{
-		queue->size--;
-		queue->front++;
-
-		if (queue->front == queue->capacity)
-			queue->front = 0;
-	}
-}
-
-/*
-	Returns the front element of the queue.
-*/
-int front(MyQueue* queue)
-{
-	if (queue->size == 0)
-	{
-		printf("Empty!\n");
-		exit(0);
-	}
-
-	return queue->elements[queue->front];
-}
-
-/*
-	Inserts element to the back of the queue.
-*/
-
-void push(MyQueue* queue, int element)
-{
-	if (queue->size == queue->capacity)
-	{
-		printf("Queue is full!\n");
-		return;
-	}
-	else
-	{
-		queue->size++;
-		queue->rear = queue->rear + 1;
-
-		if (queue->back == queue->capacity)
-			queue->back = 0;
-
-		queue->elements[queue->back] = element;
-	}
-	return;
-}
-
-/* LAB 1B IMPLEMENTATION */
+/****************************** LAB 1B IMPLEMENTATION ************************/
 
 int
 command_status (command_t c)
@@ -375,9 +289,267 @@ execute_command (command_t c, bool time_travel)
 }
 
 
-/* LAB 1C IMPLEMENTATION */
+/*************************** LAB 1C IMPLEMENTATION ***************************/
 
-command_t run_time_travel (command_stream_t stream)
+/******************************** QUEUE DATA STRUCTURE ***********************/
+
+// Circular Queue
+typedef struct Queue
 {
-	
+	int size;
+	int capacity;
+	int front;
+	int back;
+	GraphNode *elements;
+} MyQueue;
+
+/*
+	Creates a queue.
+*/
+MyQueue* createQueue(int cap)
+{
+	MyQueue	*queue = (MyQueue*) malloc(sizeof(MyQueue));
+
+	queue->elements = (GraphNode*) malloc(sizeof(GraphNode) * cap);
+	queue->size = 0;
+	queue->capacity = cap;
+	queue->front = 0;
+	queue->back = -1;
+
+	return queue;
+}
+
+/*
+	Removes the front element from the queue.
+*/
+void pop(MyQueue* queue)
+{
+	if (queue->size == 0)
+	{
+		printf("Empty!\n");
+		return;
+	}
+	else
+	{
+		queue->size--;
+		queue->front++;
+
+		if (queue->front == queue->capacity)
+			queue->front = 0;
+	}
+}
+
+/*
+	Returns the front element of the queue.
+*/
+GraphNode front(MyQueue* queue)
+{
+	if (queue->size == 0)
+	{
+		printf("Empty!\n");
+		exit(0);
+	}
+
+	return queue->elements[queue->front];
+}
+
+/*
+	Inserts element to the back of the queue.
+*/
+
+void push(MyQueue* queue, GraphNode element)
+{
+	if (queue->size == queue->capacity)
+	{
+		printf("Queue is full!\n");
+		return;
+	}
+	else
+	{
+		queue->size++;
+		queue->rear = queue->rear + 1;
+
+		if (queue->back == queue->capacity)
+			queue->back = 0;
+
+		queue->elements[queue->back] = element;
+	}
+	return;
+}
+
+typedef struct {
+	struct myNode* next;
+	char* data;
+} myNode;
+
+typedef struct {
+	struct myNode* head;
+	struct myNode* tail;
+	int size;
+} myList;
+
+
+void insert(myList* list, myNode* node)
+{
+	myNode* temp = (myNode*) checked_malloc(sizeof(myNode));
+	temp->next = NULL;
+	temp->data = node->data;
+
+	if (list->head == NULL)
+	{
+		list->head = temp;
+		list->tail = temp;
+	}
+	else
+	{
+		list->tail->next = temp;
+		list->tail = temp;
+	}
+
+	list->size++;
+	return;
+}
+
+void processCommand(command_t command)
+{
+	myList readList; 
+	readList.head = NULL;
+	readList.tail = NULL; 
+	readList.size = 0; 
+
+	myList writeList; 
+	writeList.head = NULL;
+	writeList.tail = NULL; 
+	writeList.size = 0; 
+
+	if (command->type == SIMPLE_COMMAND)
+	{
+		//command->u.word, how to access size?
+
+		if (command->input != NULL)
+		{
+			myNode* tempNode = (myNode*) checked_malloc(sizeof(myNode));; 
+			tempNode.next = NULL; 
+			tempNode.data = command->input; 
+			insert(readList, tempNode);
+		}
+	}
+
+	else if (command->type == SUBSHELL_COMMAND)
+	{
+		if (command->input != NULL)
+		{
+			myNode* tempNode = (myNode*) checked_malloc(sizeof(myNode));; 
+			tempNode.next = NULL; 
+			tempNode.data = command->input; 
+			insert(readList, tempNode);
+		}
+
+		if (command->output != NULL)
+		{
+			myNode* tempNode = (myNode*) checked_malloc(sizeof(myNode));; 
+			tempNode.next = NULL; 
+			tempNode.data = command->output; 
+			insert(writeList, tempNode);
+		}
+		processCommand(command->u.subshell_command); 
+	}
+
+	else 
+	{
+		processCommand(command->u.command[0]);
+		processCommand(command->u.command[1]);
+	}
+}
+
+typedef struct {
+	command_t command;
+	struct GraphNode** before;
+	pid_t pid;
+} GraphNode;
+
+typedef struct {
+	Queue* no_dependency;
+	Queue* dependency;
+} DependencyGraph;
+
+typedef struct {
+	GraphNode* m_node;
+
+} ListNode;
+
+DependencyGraph* createGraph(command_stream_t s)
+{
+	int i; 
+	for (i = 0; i < s->size; i++)
+	{
+		processCommand
+	}
+}
+
+void executeGraph(DependencyGraph* g)
+{
+	printf("In executeGraph\n");
+	execute_noDependency(g->no_dependency);
+	execute_Dependency(g->dependency);
+}
+
+void execute_noDependency(myQueue* queue)
+{
+	printf("In noDependency\n");
+	int i;
+
+	for (i = 0; i < queue->size; i++)
+	{
+		pid_t p = fork();
+
+		if (p == 0)
+		{
+			execute_switch(queue[i]->command);
+			exit(0);
+		}
+		else if (p > 0)
+			queue[i]->pid = p;
+	}
+}
+
+void execute_Dependency(myQueue* queue)
+{
+	printf("In Dependency\n");
+	int i;
+	int j;
+
+	// Polling
+	for (i = 0; i < queue->size; i++)
+	{
+		loop_label:
+			for (j = 0; j < queue[i]->before; j++)
+			{
+				if (j->pid == -1)
+					goto loop_label;
+			}
+
+		// Child process has been forked
+		int status;
+
+		for (j = 0; j < queue[i]->before; j++)
+			waitpid(j->pid, &status);
+
+		pid_t p = fork();
+
+		if (p == 0)
+		{
+			execute_switch(queue[i]->command);
+			exit(0);
+		}
+		else if (p > 0)
+			queue[i]->pid = p;
+	}
+}
+
+
+void run_timetravel (command_stream_t stream)
+{
+	DependencyGraph* g = createGraph(stream);
+	executeGraph(g);
 }
