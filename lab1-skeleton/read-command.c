@@ -1276,7 +1276,7 @@ command_t
 read_command_stream (command_stream_t s)
 {
     if (s->iterator >= s->size)
-    return NULL;
+        return NULL;
     return s->commands[(s->iterator++)];
 }
 

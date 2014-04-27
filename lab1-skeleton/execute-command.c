@@ -2,6 +2,7 @@
 
 #include "command.h"
 #include "command-internals.h"
+#include "alloc.h"
 
 #include <error.h>
 #include <stdio.h>
@@ -291,24 +292,72 @@ execute_command (command_t c, bool time_travel)
 
 /*************************** LAB 1C IMPLEMENTATION ***************************/
 
-/******************************** QUEUE DATA STRUCTURE ***********************/
+/************************** DATA STRUCTURES **********************************/
 
-// Circular Queue
+/*
+	GraphNodes for execution
+*/
+
+typedef struct GraphNode {
+	command_t command;
+	struct GraphNodeStream* before;
+	pid_t pid;
+} GraphNode;
+
+/*
+	Circular Queue
+*/
 typedef struct Queue
 {
 	int size;
 	int capacity;
 	int front;
 	int back;
-	GraphNode *elements;
-} MyQueue;
+	struct GraphNode *elements;
+} myQueue;
+
+/*
+	Nodes that hold inputs and outputs for readList and writeList.
+*/
+typedef struct myNode{
+	struct myNode* next;
+	char* data;
+} myNode;
+
+typedef struct myList {
+	struct myNode* head;
+	struct myNode* tail;
+	int size;
+} myList;
+
+typedef struct DependencyGraph {
+	struct Queue* no_dependency;
+	struct Queue* dependency;
+} DependencyGraph;
+
+typedef struct ListNode {
+	struct GraphNode g_node;
+	struct myList* readList;
+	struct myList* writeList;
+	struct ListNode* next;
+} ListNode;
+
+typedef struct myList2 {
+	struct ListNode* head;
+	int size;
+} myList2;
+
+typedef struct GraphNodeStream {
+	struct GraphNode* gn_arr; 
+	int size; 
+} GraphNodeStream; 
 
 /*
 	Creates a queue.
 */
-MyQueue* createQueue(int cap)
+myQueue* createQueue(int cap)
 {
-	MyQueue	*queue = (MyQueue*) malloc(sizeof(MyQueue));
+	myQueue	*queue = (myQueue*) malloc(sizeof(myQueue));
 
 	queue->elements = (GraphNode*) malloc(sizeof(GraphNode) * cap);
 	queue->size = 0;
@@ -322,7 +371,7 @@ MyQueue* createQueue(int cap)
 /*
 	Removes the front element from the queue.
 */
-void pop(MyQueue* queue)
+void pop(myQueue* queue)
 {
 	if (queue->size == 0)
 	{
@@ -342,7 +391,7 @@ void pop(MyQueue* queue)
 /*
 	Returns the front element of the queue.
 */
-GraphNode front(MyQueue* queue)
+GraphNode front(myQueue* queue)
 {
 	if (queue->size == 0)
 	{
@@ -357,7 +406,7 @@ GraphNode front(MyQueue* queue)
 	Inserts element to the back of the queue.
 */
 
-void push(MyQueue* queue, GraphNode element)
+void push(myQueue* queue, GraphNode element)
 {
 	if (queue->size == queue->capacity)
 	{
@@ -367,7 +416,7 @@ void push(MyQueue* queue, GraphNode element)
 	else
 	{
 		queue->size++;
-		queue->rear = queue->rear + 1;
+		queue->back = queue->back + 1;
 
 		if (queue->back == queue->capacity)
 			queue->back = 0;
@@ -379,23 +428,12 @@ void push(MyQueue* queue, GraphNode element)
 
 /********************* LIST STRUCTURE TO FOR READ/WRITELIST ******************/
 
-typedef struct {
-	struct myNode* next;
-	char* data;
-} myNode;
-
-typedef struct {
-	struct myNode* head;
-	struct myNode* tail;
-	int size;
-} myList;
-
 /*
 	Inserts at tail.
 */
 void insert(myList* list, myNode* node)
 {
-	myNode* temp = (myNode*) checked_malloc(sizeof(myNode));
+	myNode* temp =  (myNode*) checked_malloc(sizeof(myNode));
 	temp->next = NULL;
 	temp->data = node->data;
 
@@ -413,36 +451,6 @@ void insert(myList* list, myNode* node)
 	list->size++;
 	return;
 }
-
-/***************** LIST STRUCTURE FOR LISTNODES ******************************/
-
-typedef struct {
-	command_t command;
-	struct GraphNodeStream* before;
-	pid_t pid;
-} GraphNode;
-
-typedef struct {
-	Queue* no_dependency;
-	Queue* dependency;
-} DependencyGraph;
-
-typedef struct {
-	GraphNode* g_node;
-	myList* readList;
-	myList* writeList;
-	ListNode* next;
-} ListNode;
-
-typedef struct {
-	struct ListNode* head;
-	int size;
-} myList2;
-
-typedef struct {
-	struct GraphNode** gn_arr; 
-	int size; 
-} GraphNodeStream; 
 
 /*
 	Inserts at beginning.
@@ -469,27 +477,41 @@ void insert2(myList2* list, ListNode* node)
 
 }
 
-void insert3(GraphNodeStream* s, GraphNode* node)
+void insert3(GraphNodeStream* s, GraphNode node)
 {
-	s->gn_arr[size] = node; 
+	s->gn_arr[s->size] = node; 
 	s->size++; 
-	s->gn_arr = checked_realloc(s->gn_arr, (s->size)*sizeof(struct GraphNode*)); 
+	s->gn_arr = checked_realloc(s->gn_arr, (s->size)*sizeof(struct GraphNode)); 
 }
 
-void processCommandHelper(command_t command, myList* readList, myList* writeList, GraphNode* g_node)
+void processCommandHelper(command_t command, myList* readList, myList* writeList, GraphNode g_node)
 {
 	if (command->type == SIMPLE_COMMAND)
 	{
-		//Still need to add words
-		g_node->command[1] = command->u.word[1]; 
+		int i;
+		g_node.command = command;
 
 		if (command->input != NULL)
 		{
-			myNode* tempNode = (myNode*) checked_malloc(sizeof(myNode));
+			myNode* tempNode = checked_malloc(sizeof(myNode));
 			tempNode->next = NULL; 
 			tempNode->data = command->input; 
 			insert(readList, tempNode);
+			free(tempNode);
 		}
+
+		if (command->u.word_size > 1)
+		{
+			for (i = 1; i < command->u.word_size; i++)
+			{
+				myNode* tempNode = (myNode*) checked_malloc(sizeof(myNode));
+				tempNode->next = NULL;
+				tempNode->data = command->u.word[i];
+				insert(readList, tempNode);
+				free(tempNode);
+			}
+		}
+		return;
 	}
 
 	else if (command->type == SUBSHELL_COMMAND)
@@ -500,6 +522,7 @@ void processCommandHelper(command_t command, myList* readList, myList* writeList
 			tempNode->next = NULL; 
 			tempNode->data = command->input; 
 			insert(readList, tempNode);
+			free(tempNode);
 		}
 
 		if (command->output != NULL)
@@ -508,14 +531,17 @@ void processCommandHelper(command_t command, myList* readList, myList* writeList
 			tempNode->next = NULL; 
 			tempNode->data = command->output; 
 			insert(writeList, tempNode);
+			free(tempNode);
 		}
-		processCommandHelper(command->u.subshell_command); 
+		processCommandHelper(command->u.subshell_command, readList, writeList, g_node); 
+		return;
 	}
 
 	else 
 	{
-		processCommandHelper(command->u.command[0]);
-		processCommandHelper(command->u.command[1]);
+		processCommandHelper(command->u.command[0], readList, writeList, g_node);
+		processCommandHelper(command->u.command[1], readList, writeList, g_node);
+		return;
 	}
 } 
 
@@ -535,9 +561,9 @@ ListNode* processCommand(command_t command)
 	gnstream->size = 0; 
 	gnstream->gn_arr = checked_malloc(sizeof(GraphNode*)); 
 
-	GraphNode* g_node = (GraphNode*) checked_malloc (sizeof(GraphNode));
-	g_node->pid = -1;
-	g_node->before = gnstream;  
+	GraphNode g_node;
+	g_node.pid = -1;
+	g_node.before = gnstream;  
 
 	ListNode* newNode = (ListNode*) checked_malloc(sizeof(ListNode));
 
@@ -547,6 +573,10 @@ ListNode* processCommand(command_t command)
 	newNode->writeList = writeList; 
 	newNode->next = NULL; 
 	newNode->g_node = g_node; 
+
+	free(readList);
+	free(writeList);
+	free(gnstream);
 
 	return newNode; 
 }
@@ -558,8 +588,8 @@ ListNode* processCommand(command_t command)
 
 bool intersect(myList* list1, myList* list2)
 {
-	myNode iter1 = list1->head;
-	myNode iter2 = list2->head;
+	myNode* iter1 = list1->head;
+	myNode* iter2 = list2->head;
 
 	for ( ; iter1 != NULL; iter1 = iter1->next)
 	{
@@ -578,8 +608,8 @@ DependencyGraph* createGraph(command_stream_t s)
 	int i; 
 
 	DependencyGraph* graph = (DependencyGraph*) checked_malloc(sizeof(DependencyGraph));
-	graph->no_dependency = checked_malloc(sizeof(MyQueue));
-	graph->dependency = checked_malloc(sizeof(MyQueue));
+	graph->no_dependency = createQueue(10);
+	graph->dependency = createQueue(10);
 
 	myList2* list = (myList2*) checked_malloc(sizeof(myList2));
 	list->head = NULL;
@@ -590,7 +620,7 @@ DependencyGraph* createGraph(command_stream_t s)
 		ListNode* newListNode = processCommand(s->commands[i]);
 		insert2(list, newListNode);
 
-		ListNode iter = list->head->next;
+		ListNode* iter = list->head->next;
 
 		while (iter != NULL)
 		{
@@ -598,25 +628,22 @@ DependencyGraph* createGraph(command_stream_t s)
 				intersect(newListNode->writeList, iter->readList) == true ||
 				intersect(newListNode->writeList, iter->writeList) == true )
 				{
-					insert3(newListNode->g_node->before, iter->g_node);
+					insert3(newListNode->g_node.before, iter->g_node);
 				}
 
 			iter = iter->next;
 		}
 
-		if (newListNode->g_node->before == NULL)
+		if (newListNode->g_node.before == NULL)
 			push(graph->no_dependency, newListNode->g_node);
 		else
 			push(graph->dependency, newListNode->g_node);
 
 	}
-}
 
-void executeGraph(DependencyGraph* g)
-{
-	printf("In executeGraph\n");
-	execute_noDependency(g->no_dependency);
-	execute_Dependency(g->dependency);
+	free(list);
+
+	return graph;
 }
 
 void execute_noDependency(myQueue* queue)
@@ -630,11 +657,11 @@ void execute_noDependency(myQueue* queue)
 
 		if (p == 0)
 		{
-			execute_switch(queue[i]->command);
+			execute_switch((queue->elements[i]).command);
 			exit(0);
 		}
 		else if (p > 0)
-			queue[i]->pid = p;
+			(queue->elements[i]).pid = p;
 	}
 }
 
@@ -647,29 +674,38 @@ void execute_Dependency(myQueue* queue)
 	// Polling
 	for (i = 0; i < queue->size; i++)
 	{
+		GraphNodeStream* before = queue->elements[i].before;
+
 		loop_label:
-			for (j = 0; j < queue[i]->before; j++)
+			for (j = 0; j < before->size; j++)
 			{
-				if (j->pid == -1)
+				if (before->gn_arr[j].pid == -1)
 					goto loop_label;
 			}
 
 		// Child process has been forked
 		int status;
 
-		for (j = 0; j < queue[i]->before; j++)
-			waitpid(j->pid, &status);
+		for (j = 0; j < before->size; j++)
+			waitpid(before->gn_arr[j].pid, &status, 0);
 
 		pid_t p = fork();
 
 		if (p == 0)
 		{
-			execute_switch(queue[i]->command);
+			execute_switch((queue->elements[i]).command);
 			exit(0);
 		}
 		else if (p > 0)
-			queue[i]->pid = p;
+			(queue->elements[i]).pid = p;
 	}
+}
+
+void executeGraph(DependencyGraph* g)
+{
+	printf("In executeGraph\n");
+	execute_noDependency(g->no_dependency);
+	execute_Dependency(g->dependency);
 }
 
 
