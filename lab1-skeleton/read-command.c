@@ -854,6 +854,12 @@ make_command_stream (int (*get_next_byte) (void *),
                 //continue;
             }
 
+            if (current == ';' && last == ' ')
+            {
+                size_t length = strlen(buffer);
+                buffer[length-1] = '\0';
+            }
+
             // checking for invalid character
             if (current == '`')
             {

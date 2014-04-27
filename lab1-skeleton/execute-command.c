@@ -60,6 +60,7 @@ void execute_switch (command_t c)
 
 void executingSimple(command_t c)
 {
+	//fprintf(stderr, "Executing Simple\n");
 	int status;
 
 	pid_t pid = fork();
@@ -97,7 +98,7 @@ void executingSimple(command_t c)
 
 		if (c->output != NULL)
 		{
-			//printf("There is an output\n");
+			printf("There is an output\n");
 			int outputRedir = open(c->output, O_WRONLY | O_TRUNC| O_CREAT, 0644);
 		  	if (outputRedir < 0)
 				error(1, 0, "Unable to open outputfile");
@@ -438,6 +439,7 @@ void insert(myList* list, myNode* node)
 	myNode* temp =  (myNode*) checked_malloc(sizeof(myNode));
 	temp->next = NULL;
 	temp->data = node->data;
+	fprintf(stderr, "Insert: %s\n", temp->data);
 
 	if (list->head == NULL)
 	{
@@ -450,6 +452,9 @@ void insert(myList* list, myNode* node)
 		list->tail = temp;
 	}
 
+	fprintf(stderr, "Tail: %s\n", list->tail->data);
+
+	free(temp);
 	list->size++;
 	return;
 }
@@ -459,9 +464,39 @@ void insert(myList* list, myNode* node)
 */
 void insert2(myList2* list, ListNode* node)
 {
+	fprintf(stderr, "Insert2\n");
+
 	ListNode* temp = (ListNode*) checked_malloc (sizeof(ListNode));
 	temp->readList = node->readList;
 	temp->writeList = node->writeList;
+
+	if (temp->readList == NULL)
+	{
+		fprintf(stderr, "readList is NULL\n");
+	}
+	else
+	{
+		myNode* iter = temp->readList->head;
+
+		while (iter != NULL)
+		{
+			fprintf(stderr, "Read: %s ", iter->data);
+		}
+	}
+
+	if (temp->writeList == NULL)
+	{
+		fprintf(stderr, "writeList is NULL\n");
+	}
+	else
+	{
+		myNode* iter = temp->readList->head;
+
+		while (iter != NULL)
+		{
+			fprintf(stderr, "Write: %s ", iter->data);
+		}
+	}
 
 	if (list->head == NULL)
 	{
@@ -475,6 +510,9 @@ void insert2(myList2* list, ListNode* node)
 	}
 
 	list->size++;
+
+	free(temp);
+
 	return;
 
 }
@@ -488,13 +526,16 @@ void insert3(GraphNodeStream* s, GraphNode node)
 
 void processCommandHelper(command_t command, myList* readList, myList* writeList, GraphNode g_node)
 {
+
 	if (command->type == SIMPLE_COMMAND)
 	{
+		fprintf(stderr, "SIMPLE\n");
+		fprintf(stderr, "word_size: %d\n", command->word_size);
 		int i;
-		g_node.command = command;
 
 		if (command->input != NULL)
 		{
+			fprintf(stderr, "Inserting into readList\n");
 			myNode* tempNode = checked_malloc(sizeof(myNode));
 			tempNode->next = NULL; 
 			tempNode->data = command->input; 
@@ -506,6 +547,7 @@ void processCommandHelper(command_t command, myList* readList, myList* writeList
 		{
 			for (i = 1; i < command->word_size; i++)
 			{
+				fprintf(stderr, "Inserting into readList\n");
 				myNode* tempNode = (myNode*) checked_malloc(sizeof(myNode));
 				tempNode->next = NULL;
 				tempNode->data = command->u.word[i];
@@ -513,13 +555,27 @@ void processCommandHelper(command_t command, myList* readList, myList* writeList
 				free(tempNode);
 			}
 		}
+
+		if (command->output != NULL)
+		{
+			fprintf(stderr, "Inserting into writeList\n");
+			myNode* tempNode = (myNode*) checked_malloc(sizeof(myNode));
+			tempNode->next = NULL; 
+			tempNode->data = command->output; 
+			insert(writeList, tempNode);
+			free(tempNode);
+		}
+
 		return;
 	}
 
 	else if (command->type == SUBSHELL_COMMAND)
 	{
+		fprintf(stderr, "SUBSHELL\n");
+		fprintf(stderr, "word_size: %d\n", command->word_size);
 		if (command->input != NULL)
 		{
+			fprintf(stderr, "Inserting into readList\n");
 			myNode* tempNode = (myNode*) checked_malloc(sizeof(myNode)); 
 			tempNode->next = NULL; 
 			tempNode->data = command->input; 
@@ -529,6 +585,7 @@ void processCommandHelper(command_t command, myList* readList, myList* writeList
 
 		if (command->output != NULL)
 		{
+			fprintf(stderr, "Inserting into writeList\n");
 			myNode* tempNode = (myNode*) checked_malloc(sizeof(myNode));
 			tempNode->next = NULL; 
 			tempNode->data = command->output; 
@@ -541,6 +598,9 @@ void processCommandHelper(command_t command, myList* readList, myList* writeList
 
 	else 
 	{
+		fprintf(stderr, "OTHER\n");
+		fprintf(stderr, "word_size: %d\n", command->word_size);
+
 		processCommandHelper(command->u.command[0], readList, writeList, g_node);
 		processCommandHelper(command->u.command[1], readList, writeList, g_node);
 		return;
@@ -566,6 +626,7 @@ ListNode* processCommand(command_t command)
 	GraphNode g_node;
 	g_node.pid = -1;
 	g_node.before = gnstream;  
+	g_node.command = command;
 
 	ListNode* newNode = (ListNode*) checked_malloc(sizeof(ListNode));
 
@@ -590,16 +651,27 @@ ListNode* processCommand(command_t command)
 
 bool intersect(myList* list1, myList* list2)
 {
+	fprintf(stderr, "In intersect!\n");
+
+	if (list1 == NULL || list2 == NULL)
+		return false;
+
 	myNode* iter1 = list1->head;
 	myNode* iter2 = list2->head;
 
-	for ( ; iter1 != NULL; iter1 = iter1->next)
+	while (iter1 != NULL)
 	{
-		for ( ; iter2 != NULL; iter2 = iter2->next)
+		fprintf(stderr, "iter1->data: %s", iter1->data);
+		while (iter2 != NULL)
 		{
+			fprintf(stderr, "iter2->data: %s", iter2->data);
 			if (iter1->data == iter2->data)
 				return true;
+
+			iter2 = iter2->next;
 		}
+
+		iter1 = iter1->next;
 	}
 
 	return false;
@@ -613,12 +685,10 @@ DependencyGraph* createGraph(command_stream_t s)
 	DependencyGraph* graph = (DependencyGraph*) checked_malloc(sizeof(DependencyGraph));
 	graph->no_dependency = createQueue(10);
 	graph->dependency = createQueue(10);
-	fprintf(stderr, "After DependencyGraph\n");
 
 	myList2* list = (myList2*) checked_malloc(sizeof(myList2));
 	list->head = NULL;
 	list->size = 0;
-	fprintf(stderr, "After myList2\n");
 
  	for (i = 0; i < s->size; i++)
 	{
@@ -633,7 +703,7 @@ DependencyGraph* createGraph(command_stream_t s)
 
 		while (iter != NULL)
 		{
-			
+			fprintf(stderr, "Checking intersections\n");
 			if (intersect(newListNode->readList, iter->writeList) == true ||
 				intersect(newListNode->writeList, iter->readList) == true ||
 				intersect(newListNode->writeList, iter->writeList) == true )
@@ -724,7 +794,6 @@ void executeGraph(DependencyGraph* g)
 
 void run_timetravel(command_stream_t stream)
 {
-	fprintf(stderr, "Running time travel\n");
 	DependencyGraph* g = createGraph(stream);
 	executeGraph(g);
 }
