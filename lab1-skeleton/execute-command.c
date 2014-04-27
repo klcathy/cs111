@@ -98,7 +98,7 @@ void executingSimple(command_t c)
 
 		if (c->output != NULL)
 		{
-			printf("There is an output\n");
+			//printf("There is an output\n");
 			int outputRedir = open(c->output, O_WRONLY | O_TRUNC| O_CREAT, 0644);
 		  	if (outputRedir < 0)
 				error(1, 0, "Unable to open outputfile");
@@ -454,7 +454,6 @@ void insert(myList* list, myNode* node)
 
 	fprintf(stderr, "Tail: %s\n", list->tail->data);
 
-	free(temp);
 	list->size++;
 	return;
 }
@@ -480,7 +479,9 @@ void insert2(myList2* list, ListNode* node)
 
 		while (iter != NULL)
 		{
+			fprintf(stderr, "iter not NULL\n");
 			fprintf(stderr, "Read: %s ", iter->data);
+			iter = iter->next;
 		}
 	}
 
@@ -495,6 +496,7 @@ void insert2(myList2* list, ListNode* node)
 		while (iter != NULL)
 		{
 			fprintf(stderr, "Write: %s ", iter->data);
+			iter = iter->next;
 		}
 	}
 
@@ -510,8 +512,6 @@ void insert2(myList2* list, ListNode* node)
 	}
 
 	list->size++;
-
-	free(temp);
 
 	return;
 
@@ -540,7 +540,6 @@ void processCommandHelper(command_t command, myList* readList, myList* writeList
 			tempNode->next = NULL; 
 			tempNode->data = command->input; 
 			insert(readList, tempNode);
-			free(tempNode);
 		}
 
 		if (command->word_size > 1)
@@ -552,7 +551,6 @@ void processCommandHelper(command_t command, myList* readList, myList* writeList
 				tempNode->next = NULL;
 				tempNode->data = command->u.word[i];
 				insert(readList, tempNode);
-				free(tempNode);
 			}
 		}
 
@@ -563,7 +561,7 @@ void processCommandHelper(command_t command, myList* readList, myList* writeList
 			tempNode->next = NULL; 
 			tempNode->data = command->output; 
 			insert(writeList, tempNode);
-			free(tempNode);
+			
 		}
 
 		return;
@@ -580,7 +578,7 @@ void processCommandHelper(command_t command, myList* readList, myList* writeList
 			tempNode->next = NULL; 
 			tempNode->data = command->input; 
 			insert(readList, tempNode);
-			free(tempNode);
+			
 		}
 
 		if (command->output != NULL)
@@ -589,8 +587,7 @@ void processCommandHelper(command_t command, myList* readList, myList* writeList
 			myNode* tempNode = (myNode*) checked_malloc(sizeof(myNode));
 			tempNode->next = NULL; 
 			tempNode->data = command->output; 
-			insert(writeList, tempNode);
-			free(tempNode);
+			
 		}
 		processCommandHelper(command->u.subshell_command, readList, writeList, g_node); 
 		return;
@@ -637,9 +634,29 @@ ListNode* processCommand(command_t command)
 	newNode->next = NULL; 
 	newNode->g_node = g_node; 
 
-	free(readList);
-	free(writeList);
-	free(gnstream);
+	/*
+
+	if (newNode->readList != NULL)
+	{
+		myNode* iter = newNode->readList->head;
+
+		while (iter != NULL)
+		{
+			fprintf(stderr, "Read: %s ", iter->data);
+			iter = iter->next;
+		}
+	}
+
+	if (newNode->writeList != NULL)
+	{
+		myNode* iter = newNode->writeList->head;
+		while (iter != NULL)
+		{
+			fprintf(stderr, "Write: %s ", iter->data);
+			iter = iter->next;
+		}
+	}
+	*/
 
 	return newNode; 
 }
@@ -662,6 +679,7 @@ bool intersect(myList* list1, myList* list2)
 	while (iter1 != NULL)
 	{
 		fprintf(stderr, "iter1->data: %s", iter1->data);
+		fprintf(stderr, "\n");
 		while (iter2 != NULL)
 		{
 			fprintf(stderr, "iter2->data: %s", iter2->data);
@@ -670,7 +688,8 @@ bool intersect(myList* list1, myList* list2)
 
 			iter2 = iter2->next;
 		}
-
+		fprintf(stderr, "\n");
+		
 		iter1 = iter1->next;
 	}
 
@@ -693,6 +712,29 @@ DependencyGraph* createGraph(command_stream_t s)
  	for (i = 0; i < s->size; i++)
 	{
 		ListNode* newListNode = processCommand(s->commands[i]);
+
+		/*
+		if (newListNode->readList != NULL)
+		{
+			myNode* iter = newListNode->readList->head;
+			fprintf(stderr, "WHY SEGFAULT\n");
+			while (iter != NULL)
+			{
+				fprintf(stderr, "Read: %s ", iter->data);
+				iter = iter->next;
+			}
+		}
+
+		if (newListNode->writeList != NULL)
+		{
+			myNode* iter = newListNode->writeList->head;
+			while (iter != NULL)
+			{
+				fprintf(stderr, "Write: %s ", iter->data);
+				iter = iter->next;
+			}
+		}
+	*/
 		insert2(list, newListNode);
 
 		fprintf(stderr, "After insert2\n");
@@ -723,8 +765,6 @@ DependencyGraph* createGraph(command_stream_t s)
 	}
 
 	fprintf(stderr, "Out the loop\n");
-	free(list);
-	fprintf(stderr, "Did free happen?\n");
 
 	return graph;
 }
