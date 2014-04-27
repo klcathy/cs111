@@ -22,6 +22,8 @@ struct command
   char *input;
   char *output;
 
+  int word_size;
+
   union
   {
     // for AND_COMMAND, SEQUENCE_COMMAND, OR_COMMAND, PIPE_COMMAND:
@@ -29,10 +31,16 @@ struct command
 
     // for SIMPLE_COMMAND:
     char **word;
-    int word_size; 
 
     // for SUBSHELL_COMMAND:
     struct command *subshell_command;
   } u;
 };
 
+
+struct command_stream {
+    int size;         
+    int iterator;
+    command_t *commands;
+};
+ 

@@ -290,9 +290,11 @@ execute_command (command_t c, bool time_travel)
 }
 
 
-/*************************** LAB 1C IMPLEMENTATION ***************************/
 
-/************************** DATA STRUCTURES **********************************/
+
+// /*************************** LAB 1C IMPLEMENTATION ***************************/
+
+// /************************** DATA STRUCTURES **********************************/
 
 /*
 	GraphNodes for execution
@@ -371,7 +373,7 @@ myQueue* createQueue(int cap)
 /*
 	Removes the front element from the queue.
 */
-void pop(myQueue* queue)
+void popQueue(myQueue* queue)
 {
 	if (queue->size == 0)
 	{
@@ -406,7 +408,7 @@ GraphNode front(myQueue* queue)
 	Inserts element to the back of the queue.
 */
 
-void push(myQueue* queue, GraphNode element)
+void pushQueue(myQueue* queue, GraphNode element)
 {
 	if (queue->size == queue->capacity)
 	{
@@ -500,9 +502,9 @@ void processCommandHelper(command_t command, myList* readList, myList* writeList
 			free(tempNode);
 		}
 
-		if (command->u.word_size > 1)
+		if (command->word_size > 1)
 		{
-			for (i = 1; i < command->u.word_size; i++)
+			for (i = 1; i < command->word_size; i++)
 			{
 				myNode* tempNode = (myNode*) checked_malloc(sizeof(myNode));
 				tempNode->next = NULL;
@@ -605,25 +607,33 @@ bool intersect(myList* list1, myList* list2)
 
 DependencyGraph* createGraph(command_stream_t s)
 {
+	fprintf(stderr, "Running createGraph\n");
 	int i; 
 
 	DependencyGraph* graph = (DependencyGraph*) checked_malloc(sizeof(DependencyGraph));
 	graph->no_dependency = createQueue(10);
 	graph->dependency = createQueue(10);
+	fprintf(stderr, "After DependencyGraph\n");
 
 	myList2* list = (myList2*) checked_malloc(sizeof(myList2));
 	list->head = NULL;
 	list->size = 0;
+	fprintf(stderr, "After myList2\n");
 
  	for (i = 0; i < s->size; i++)
 	{
 		ListNode* newListNode = processCommand(s->commands[i]);
 		insert2(list, newListNode);
 
+		fprintf(stderr, "After insert2\n");
+		
 		ListNode* iter = list->head->next;
+
+		fprintf(stderr, "After iter\n");
 
 		while (iter != NULL)
 		{
+			
 			if (intersect(newListNode->readList, iter->writeList) == true ||
 				intersect(newListNode->writeList, iter->readList) == true ||
 				intersect(newListNode->writeList, iter->writeList) == true )
@@ -634,14 +644,17 @@ DependencyGraph* createGraph(command_stream_t s)
 			iter = iter->next;
 		}
 
+		fprintf(stderr, "Gonna push some queues\n");
 		if (newListNode->g_node.before == NULL)
-			push(graph->no_dependency, newListNode->g_node);
+			pushQueue(graph->no_dependency, newListNode->g_node);
 		else
-			push(graph->dependency, newListNode->g_node);
+			pushQueue(graph->dependency, newListNode->g_node);
 
 	}
 
+	fprintf(stderr, "Out the loop\n");
 	free(list);
+	fprintf(stderr, "Did free happen?\n");
 
 	return graph;
 }
@@ -709,8 +722,9 @@ void executeGraph(DependencyGraph* g)
 }
 
 
-void run_timetravel (command_stream_t stream)
+void run_timetravel(command_stream_t stream)
 {
+	fprintf(stderr, "Running time travel\n");
 	DependencyGraph* g = createGraph(stream);
 	executeGraph(g);
 }

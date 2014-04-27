@@ -56,7 +56,9 @@ main (int argc, char **argv)
 
   if (time_travel && !print_tree)
   {
-    last_command = run_time_travel(command_stream);
+    printf("Running time travel in Main\n");
+    run_timetravel(command_stream);
+    return 0; 
   }
   while ((command = read_command_stream (command_stream)))
     {

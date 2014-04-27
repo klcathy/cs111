@@ -34,12 +34,12 @@ j <> filename: Open filename for r/w, and assign file descriptor j to it
 #define APPEND 11       // >>
 
 // Singly linked list of commands
-struct command_stream {
+/*struct command_stream {
     int size;         
     int iterator;
     command_t *commands;
-}; 
-
+};
+*/
 /****************** Stack data structure ****************************/
 // MAY NEED TO CHANGE OPERATOR STACK
 typedef struct stack
@@ -497,7 +497,7 @@ command_t parser(token_stream* stream)
 	            simple->u.word[wordpos] = iter->string;
 	            simple->u.word[++wordpos] = NULL;
 	            word_length += 2;
-                simple->u.word_size = word_length; 
+                simple->word_size = word_length-1; 
 	            CMD_FLAG = true;
 	            push(&command_stack, simple);
 	            //printf("Simple->u.word[%d]: %s\n", (wordpos-1), simple->u.word[wordpos-1]);
@@ -524,7 +524,7 @@ command_t parser(token_stream* stream)
 
 	            simple->u.word[++wordpos] = NULL;
 	            word_length++;
-                simple->u.word_size = word_length; 
+                simple->word_size++; 
 	            push(&command_stack, simple);
 
 	            //printf("Simple->u.word[0]: %s\n", simple->u.word[0]);
@@ -584,6 +584,7 @@ command_t parser(token_stream* stream)
 	        subshell->status = -1;
 	        subshell->input = NULL;
 	        subshell->output = NULL;
+                //subshell->word_size = 0;
 	        command_t top_command = peek(&command_stack);
 	        //printf("Top_command: Type: %d Word[0]%s Word[1]%s\n", top_command->type, top_command->u.word[0], top_command->u.word[1]);
 	        subshell->u.subshell_command = top_command;
