@@ -33,13 +33,7 @@ j <> filename: Open filename for r/w, and assign file descriptor j to it
 #define NEWLINE 10
 #define APPEND 11       // >>
 
-// Singly linked list of commands
-/*struct command_stream {
-    int size;         
-    int iterator;
-    command_t *commands;
-};
-*/
+
 /****************** Stack data structure ****************************/
 // MAY NEED TO CHANGE OPERATOR STACK
 typedef struct stack
@@ -122,13 +116,13 @@ void insert_token(token_stream* stream, token_Node token)
     // Add to empty token stream
     if (stream->head == NULL)
     {
-    stream->head = temp;
-    stream->tail = temp;
+        stream->head = temp;
+        stream->tail = temp;
     }
     else
     { 
-    stream->tail->next = temp;
-    stream->tail = temp;
+        stream->tail->next = temp;
+        stream->tail = temp;
     }
 
     stream->size++;
@@ -158,180 +152,193 @@ token_stream* tokenizer(char* input)
     size_t i;
     for (i = 0; i < strlen(input); i++)
     {
-    c = input[i];
-    switch(c)
-    {
-    case '#': break;    // no comments should be in the buffer
-    case '&':
-    {
-    if (temptoken.type != INIT)
-        insert_token(stream, temptoken);
-
-    // if &&
-    if (input[i+1] == '&')
-    {
-        char* str = checked_malloc(3*sizeof(char));
-        str[0] = c;
-        str[1] = c;
-        str[2] = '\0';
-        temptoken.string = str;
-        temptoken.type = AND;
-        i++;
-        break;
-    }
-    }
-    case '\n': 
-    { 
-        if (temptoken.type != INIT)      
-        insert_token(stream, temptoken);
-
-        stream->next = checked_malloc(sizeof(token_stream));
-        stream = (token_stream*) (stream->next);
-        char* str = checked_malloc(sizeof(char));
-        str[0] = '\0';
-        temptoken.string = str;
-        temptoken.type = NEWLINE;
-        break;
-    }
-    case ';':   // end of token
-    {
-        if (temptoken.type != INIT)      
-        insert_token(stream, temptoken);
-
-        char* str = checked_malloc(sizeof(char));
-        str[0] = c;                       // CHANGE THIS BACK TO str[0] = c WHEN DONE
-        str[1] = '\0';
-        temptoken.string = str;
-        temptoken.type = SEMICOLON;
-        break;
-    }
-    case '|':
-    {
-    if (temptoken.type != INIT)
-        insert_token(stream, temptoken);
-
-    // if ||
-    if (input[i+1] == '|')
-    {
-        char* str = checked_malloc(3*sizeof(char));
-        str[0] = c;
-        str[1] = c;
-        str[2] = '\0';
-        temptoken.string = str;
-        temptoken.type = OR;
-        i++;
-        break;
-    }
-
-    // if pipe
-    else if (input[i+1] != '|')
-    {
-        char* str = checked_malloc(2*sizeof(char));
-        str[0] = c;
-        str[1] = '\0';
-        temptoken.string = str;
-        temptoken.type = PIPE;
-        break;
-    }
-    }
-
-    // left redirect
-    case '<':
-    {
-    if (temptoken.type != INIT)
-        insert_token(stream, temptoken);
-
-    char* str = checked_malloc(2*sizeof(char));
-    str[0] = c;
-    str[1] = '\0';
-    temptoken.string = str;
-    temptoken.type = LEFT_REDIR;
-    break;
-    }
-
-    // right redirect
-    case '>':
-    {
-    if (temptoken.type != INIT)
-        insert_token(stream, temptoken);
-
-
-    char* str = checked_malloc(2*sizeof(char));
-    str[0] = c;
-    str[1] = '\0';
-    temptoken.string = str;
-    temptoken.type = RIGHT_REDIR;
-    break;
-    }
-
-    // subshell start
-    case '(':
-    {
-    if (temptoken.type != INIT)
-        insert_token(stream, temptoken);
-
-    char* str = checked_malloc(2*sizeof(char));
-    str[0] = c;
-    str[1] = '\0';
-    temptoken.string = str;
-    temptoken.type = LEFT_SUBSHELL;
-    break;
-    }
-
-    // subshell end
-    case ')':
-    {
-    if (temptoken.type != INIT)
-        insert_token(stream, temptoken);
-
-    char* str = checked_malloc(2*sizeof(char));
-    str[0] = c;
-    str[1] = '\0';
-    temptoken.string = str;
-    temptoken.type = RIGHT_SUBSHELL;
-    break;
-    }
-    case ' ':
-    {
-    // if the space is not inside a command, we don't care
-    if (temptoken.type != CMD)
-        break;
-    else
-    {
-        if (temptoken.type != INIT)
-        insert_token(stream, temptoken);
-        char* str = checked_malloc(sizeof(char));
-        str[0] = '\0';
-        temptoken.string = str;
-        temptoken.type = CMD;     
-        break; 
-    }
-    // otherwise, let default handle it
-    }
-    default:
-    {
-        if (temptoken.type != CMD)  // get all, 
+        c = input[i];
+        switch(c)
         {
-        if (temptoken.type != INIT)    // not an new token
-        insert_token(stream, temptoken);
+            case '#': break;    // no comments should be in the buffer
+            case '&':
+            {
+                if (temptoken.type != INIT)
+                    insert_token(stream, temptoken);
 
-        // save new character
-        char* str = checked_malloc(sizeof(char));
-        str[0] = '\0';
-        temptoken.string = str;
-        temptoken.type = CMD;
+                // if &&
+                if (input[i+1] == '&')
+                {
+                    char* str = checked_malloc(3*sizeof(char));
+                    str[0] = c;
+                    str[1] = c;
+                    str[2] = '\0';
+                    temptoken.string = str;
+                    temptoken.type = AND;
+                    i++;
+                    break;
+                }
+            }
+            case '@':
+            {
+                if (temptoken.type != INIT)
+                    insert_token(stream, temptoken);
+
+                char* str = checked_malloc(2* sizeof(char));
+                str[0] = '\n';
+                str[1] = '\0';
+                temptoken.string = str;
+                temptoken.type = CMD;
+
+                break;
+            }
+            case '\n': 
+            { 
+                if (temptoken.type != INIT)      
+                    insert_token(stream, temptoken);
+
+                stream->next = checked_malloc(sizeof(token_stream));
+                stream = (token_stream*) (stream->next);
+                char* str = checked_malloc(sizeof(char));
+                str[0] = '\0';
+                temptoken.string = str;
+                temptoken.type = NEWLINE;
+                break;
+            }
+            case ';':   // end of token
+            {
+                if (temptoken.type != INIT)      
+                    insert_token(stream, temptoken);
+
+                char* str = checked_malloc(sizeof(char));
+                str[0] = c;                       // CHANGE THIS BACK TO str[0] = c WHEN DONE
+                str[1] = '\0';
+                temptoken.string = str;
+                temptoken.type = SEMICOLON;
+                break;
+            }
+            case '|':
+            {
+            if (temptoken.type != INIT)
+                insert_token(stream, temptoken);
+
+            // if ||
+            if (input[i+1] == '|')
+            {
+                char* str = checked_malloc(3*sizeof(char));
+                str[0] = c;
+                str[1] = c;
+                str[2] = '\0';
+                temptoken.string = str;
+                temptoken.type = OR;
+                i++;
+                break;
+            }
+
+            // if pipe
+            else if (input[i+1] != '|')
+            {
+                char* str = checked_malloc(2*sizeof(char));
+                str[0] = c;
+                str[1] = '\0';
+                temptoken.string = str;
+                temptoken.type = PIPE;
+                break;
+            }
+            }
+
+            // left redirect
+            case '<':
+            {
+                if (temptoken.type != INIT)
+                    insert_token(stream, temptoken);
+
+                char* str = checked_malloc(2*sizeof(char));
+                str[0] = c;
+                str[1] = '\0';
+                temptoken.string = str;
+                temptoken.type = LEFT_REDIR;
+                break;
+            }
+
+            // right redirect
+            case '>':
+            {
+                if (temptoken.type != INIT)
+                    insert_token(stream, temptoken);
+
+
+                char* str = checked_malloc(2*sizeof(char));
+                str[0] = c;
+                str[1] = '\0';
+                temptoken.string = str;
+                temptoken.type = RIGHT_REDIR;
+                break;
+            }
+
+            // subshell start
+            case '(':
+            {
+                if (temptoken.type != INIT)
+                    insert_token(stream, temptoken);
+
+                char* str = checked_malloc(2*sizeof(char));
+                str[0] = c;
+                str[1] = '\0';
+                temptoken.string = str;
+                temptoken.type = LEFT_SUBSHELL;
+                break;
+            }
+
+            // subshell end
+            case ')':
+            {
+            if (temptoken.type != INIT)
+                insert_token(stream, temptoken);
+
+            char* str = checked_malloc(2*sizeof(char));
+            str[0] = c;
+            str[1] = '\0';
+            temptoken.string = str;
+            temptoken.type = RIGHT_SUBSHELL;
+            break;
+            }
+            case ' ':
+            {
+            // if the space is not inside a command, we don't care
+            if (temptoken.type != CMD)
+                break;
+            else
+            {
+                if (temptoken.type != INIT)
+                insert_token(stream, temptoken);
+                char* str = checked_malloc(sizeof(char));
+                str[0] = '\0';
+                temptoken.string = str;
+                temptoken.type = CMD;     
+                break; 
+            }
+            // otherwise, let default handle it
+            }
+            default:
+            {
+                if (temptoken.type != CMD)  // get all, 
+                {
+                if (temptoken.type != INIT)    // not an new token
+                insert_token(stream, temptoken);
+
+                // save new character
+                char* str = checked_malloc(sizeof(char));
+                str[0] = '\0';
+                temptoken.string = str;
+                temptoken.type = CMD;
+                }
+
+                // add character to end of string
+                size_t length = strlen(temptoken.string);
+                temptoken.string = checked_realloc(temptoken.string, (length+1)*sizeof(token_Node));
+                temptoken.string[length] = c;
+                temptoken.string[length+1] = '\0';
+                break;
+
+            }
+
         }
-
-        // add character to end of string
-        size_t length = strlen(temptoken.string);
-        temptoken.string = checked_realloc(temptoken.string, (length+1)*sizeof(token_Node));
-        temptoken.string[length] = c;
-        temptoken.string[length+1] = '\0';
-        break;
-
-    }
-
-    }
 
     }
 
@@ -987,7 +994,7 @@ make_command_stream (int (*get_next_byte) (void *),
                 buffer = checked_realloc(buffer, (2+allocSize)*sizeof(char));
                 size_t length = strlen(buffer); 
                 //printf("Buffer char%c", buffer[length]);
-                buffer[length] = ' '; 
+                buffer[length] = '@'; 
                 buffer[length+1] = '\0'; 
                 continue;
             }
@@ -1067,11 +1074,11 @@ make_command_stream (int (*get_next_byte) (void *),
     }
 
     printf("\n-----------------\n");
-*/   
+   */
 
     token_stream* stream = tokenizer(buffer);
-
-    /*token_stream* stream2 = stream;
+/*
+    token_stream* stream2 = stream;
 
 
     int stream_counter = 0;
@@ -1104,8 +1111,8 @@ make_command_stream (int (*get_next_byte) (void *),
         }
         else
             temp = temp->next;
-    }*/
-   
+    }
+*/   
     
 
     command_stream_t cmd_stream = checked_malloc(sizeof(struct command_stream));

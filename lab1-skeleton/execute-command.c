@@ -372,40 +372,6 @@ myQueue* createQueue(int cap)
 }
 
 /*
-	Removes the front element from the queue.
-*/
-void popQueue(myQueue* queue)
-{
-	if (queue->size == 0)
-	{
-		printf("Empty!\n");
-		return;
-	}
-	else
-	{
-		queue->size--;
-		queue->front++;
-
-		if (queue->front == queue->capacity)
-			queue->front = 0;
-	}
-}
-
-/*
-	Returns the front element of the queue.
-*/
-GraphNode front(myQueue* queue)
-{
-	if (queue->size == 0)
-	{
-		printf("Empty!\n");
-		exit(0);
-	}
-
-	return queue->elements[queue->front];
-}
-
-/*
 	Inserts element to the back of the queue.
 */
 
@@ -439,7 +405,7 @@ void insert(myList* list, myNode* node)
 	myNode* temp =  (myNode*) checked_malloc(sizeof(myNode));
 	temp->next = NULL;
 	temp->data = node->data;
-	fprintf(stderr, "Insert: %s\n", temp->data);
+	//fprintf(stderr, "Insert: %s\n", temp->data);
 
 	if (list->head == NULL)
 	{
@@ -452,7 +418,7 @@ void insert(myList* list, myNode* node)
 		list->tail = temp;
 	}
 
-	fprintf(stderr, "Tail: %s\n", list->tail->data);
+	//fprintf(stderr, "Tail: %s\n", list->tail->data);
 
 	list->size++;
 	return;
@@ -463,13 +429,13 @@ void insert(myList* list, myNode* node)
 */
 void insert2(myList2* list, ListNode* node)
 {
-	fprintf(stderr, "Insert2\n");
+	//fprintf(stderr, "Insert2\n");
 
 	ListNode* temp = (ListNode*) checked_malloc (sizeof(ListNode));
 	temp->readList = node->readList;
 	temp->writeList = node->writeList;
 
-	if (temp->readList == NULL)
+	/*if (temp->readList == NULL)
 	{
 		fprintf(stderr, "readList is NULL\n");
 	}
@@ -483,9 +449,9 @@ void insert2(myList2* list, ListNode* node)
 			fprintf(stderr, "Read: %s ", iter->data);
 			iter = iter->next;
 		}
-	}
+	}*/
 
-	if (temp->writeList == NULL)
+	/*if (temp->writeList == NULL)
 	{
 		fprintf(stderr, "writeList is NULL\n");
 	}
@@ -498,7 +464,7 @@ void insert2(myList2* list, ListNode* node)
 			fprintf(stderr, "Write: %s ", iter->data);
 			iter = iter->next;
 		}
-	}
+	}*/
 
 	if (list->head == NULL)
 	{
@@ -529,13 +495,13 @@ void processCommandHelper(command_t command, myList* readList, myList* writeList
 
 	if (command->type == SIMPLE_COMMAND)
 	{
-		fprintf(stderr, "SIMPLE\n");
-		fprintf(stderr, "word_size: %d\n", command->word_size);
+		//fprintf(stderr, "SIMPLE\n");
+		//fprintf(stderr, "word_size: %d\n", command->word_size);
 		int i;
 
 		if (command->input != NULL)
 		{
-			fprintf(stderr, "Inserting into readList\n");
+			//fprintf(stderr, "Inserting into readList\n");
 			myNode* tempNode = checked_malloc(sizeof(myNode));
 			tempNode->next = NULL; 
 			tempNode->data = command->input; 
@@ -546,7 +512,7 @@ void processCommandHelper(command_t command, myList* readList, myList* writeList
 		{
 			for (i = 1; i < command->word_size; i++)
 			{
-				fprintf(stderr, "Inserting into readList\n");
+				//fprintf(stderr, "Inserting into readList\n");
 				myNode* tempNode = (myNode*) checked_malloc(sizeof(myNode));
 				tempNode->next = NULL;
 				tempNode->data = command->u.word[i];
@@ -556,7 +522,7 @@ void processCommandHelper(command_t command, myList* readList, myList* writeList
 
 		if (command->output != NULL)
 		{
-			fprintf(stderr, "Inserting into writeList\n");
+			//fprintf(stderr, "Inserting into writeList\n");
 			myNode* tempNode = (myNode*) checked_malloc(sizeof(myNode));
 			tempNode->next = NULL; 
 			tempNode->data = command->output; 
@@ -569,11 +535,11 @@ void processCommandHelper(command_t command, myList* readList, myList* writeList
 
 	else if (command->type == SUBSHELL_COMMAND)
 	{
-		fprintf(stderr, "SUBSHELL\n");
-		fprintf(stderr, "word_size: %d\n", command->word_size);
+		//fprintf(stderr, "SUBSHELL\n");
+		//fprintf(stderr, "word_size: %d\n", command->word_size);
 		if (command->input != NULL)
 		{
-			fprintf(stderr, "Inserting into readList\n");
+			//fprintf(stderr, "Inserting into readList\n");
 			myNode* tempNode = (myNode*) checked_malloc(sizeof(myNode)); 
 			tempNode->next = NULL; 
 			tempNode->data = command->input; 
@@ -583,7 +549,7 @@ void processCommandHelper(command_t command, myList* readList, myList* writeList
 
 		if (command->output != NULL)
 		{
-			fprintf(stderr, "Inserting into writeList\n");
+			//fprintf(stderr, "Inserting into writeList\n");
 			myNode* tempNode = (myNode*) checked_malloc(sizeof(myNode));
 			tempNode->next = NULL; 
 			tempNode->data = command->output; 
@@ -595,8 +561,8 @@ void processCommandHelper(command_t command, myList* readList, myList* writeList
 
 	else 
 	{
-		fprintf(stderr, "OTHER\n");
-		fprintf(stderr, "word_size: %d\n", command->word_size);
+		//fprintf(stderr, "OTHER\n");
+		//fprintf(stderr, "word_size: %d\n", command->word_size);
 
 		processCommandHelper(command->u.command[0], readList, writeList, g_node);
 		processCommandHelper(command->u.command[1], readList, writeList, g_node);
@@ -668,7 +634,7 @@ ListNode* processCommand(command_t command)
 
 bool intersect(myList* list1, myList* list2)
 {
-	fprintf(stderr, "In intersect!\n");
+	//fprintf(stderr, "In intersect!\n");
 
 	if (list1 == NULL || list2 == NULL)
 		return false;
@@ -678,17 +644,17 @@ bool intersect(myList* list1, myList* list2)
 
 	while (iter1 != NULL)
 	{
-		fprintf(stderr, "iter1->data: %s", iter1->data);
-		fprintf(stderr, "\n");
+		//fprintf(stderr, "iter1->data: %s", iter1->data);
+		//fprintf(stderr, "\n");
 		while (iter2 != NULL)
 		{
-			fprintf(stderr, "iter2->data: %s", iter2->data);
+			//fprintf(stderr, "iter2->data: %s", iter2->data);
 			if (iter1->data == iter2->data)
 				return true;
 
 			iter2 = iter2->next;
 		}
-		fprintf(stderr, "\n");
+		//fprintf(stderr, "\n");
 		
 		iter1 = iter1->next;
 	}
@@ -698,7 +664,7 @@ bool intersect(myList* list1, myList* list2)
 
 DependencyGraph* createGraph(command_stream_t s)
 {
-	fprintf(stderr, "Running createGraph\n");
+	//fprintf(stderr, "Running createGraph\n");
 	int i; 
 
 	DependencyGraph* graph = (DependencyGraph*) checked_malloc(sizeof(DependencyGraph));
@@ -713,11 +679,10 @@ DependencyGraph* createGraph(command_stream_t s)
 	{
 		ListNode* newListNode = processCommand(s->commands[i]);
 
-		/*
+	/*	
 		if (newListNode->readList != NULL)
 		{
 			myNode* iter = newListNode->readList->head;
-			fprintf(stderr, "WHY SEGFAULT\n");
 			while (iter != NULL)
 			{
 				fprintf(stderr, "Read: %s ", iter->data);
@@ -737,15 +702,15 @@ DependencyGraph* createGraph(command_stream_t s)
 	*/
 		insert2(list, newListNode);
 
-		fprintf(stderr, "After insert2\n");
+		//fprintf(stderr, "After insert2\n");
 		
 		ListNode* iter = list->head->next;
 
-		fprintf(stderr, "After iter\n");
+		//fprintf(stderr, "After iter\n");
 
 		while (iter != NULL)
 		{
-			fprintf(stderr, "Checking intersections\n");
+			//fprintf(stderr, "Checking intersections\n");
 			if (intersect(newListNode->readList, iter->writeList) == true ||
 				intersect(newListNode->writeList, iter->readList) == true ||
 				intersect(newListNode->writeList, iter->writeList) == true )
@@ -756,7 +721,7 @@ DependencyGraph* createGraph(command_stream_t s)
 			iter = iter->next;
 		}
 
-		fprintf(stderr, "Gonna push some queues\n");
+		//fprintf(stderr, "Gonna push some queues\n");
 		if (newListNode->g_node.before == NULL)
 			pushQueue(graph->no_dependency, newListNode->g_node);
 		else
@@ -764,14 +729,14 @@ DependencyGraph* createGraph(command_stream_t s)
 
 	}
 
-	fprintf(stderr, "Out the loop\n");
+	//fprintf(stderr, "Out the loop\n");
 
 	return graph;
 }
 
 void execute_noDependency(myQueue* queue)
 {
-	printf("In noDependency\n");
+	//printf("In noDependency\n");
 	int i;
 
 	for (i = 0; i < queue->size; i++)
@@ -790,7 +755,7 @@ void execute_noDependency(myQueue* queue)
 
 void execute_Dependency(myQueue* queue)
 {
-	printf("In Dependency\n");
+	//printf("In Dependency\n");
 	int i;
 	int j;
 
@@ -826,7 +791,7 @@ void execute_Dependency(myQueue* queue)
 
 void executeGraph(DependencyGraph* g)
 {
-	printf("In executeGraph\n");
+	//printf("In executeGraph\n");
 	execute_noDependency(g->no_dependency);
 	execute_Dependency(g->dependency);
 }
