@@ -794,6 +794,27 @@ void executeGraph(DependencyGraph* g)
 	//printf("In executeGraph\n");
 	execute_noDependency(g->no_dependency);
 	execute_Dependency(g->dependency);
+
+	int i;
+	int status;
+
+	/* Reap processes */
+
+	for (i = 0; i < g->no_dependency->size; i++)
+	{
+		if((g->no_dependency->elements[i]).pid > 0)
+		{
+			waitpid((g->no_dependency->elements[i]).pid, &status, 0);
+		}
+	}
+
+	for (i = 0; i < g->dependency->size; i++)
+	{
+		if((g->dependency->elements[i]).pid > 0)
+		{
+			waitpid((g->dependency->elements[i]).pid, &status, 0);
+		}
+	}
 }
 
 

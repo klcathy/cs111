@@ -4,6 +4,17 @@ UID: 504043927
 Name: Kailin Chang
 UID: 503999157
 
+Lab 1C:
+
+There are no known limitations based on the testcases we created.
+
+Lab 1B:
+
+There is a problem when we have simulatenous input/output redirection for
+subshell commands.
+
+Lab 1A:
+
 There are currently no known limitations based on the test cases.
 
 Our implementation of 1a can be divided into three main parts: 
