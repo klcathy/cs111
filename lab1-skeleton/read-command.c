@@ -792,6 +792,7 @@ make_command_stream (int (*get_next_byte) (void *),
     size_t allocSize = 0;
     bool LINE_FLAG = true;      // Flags beginning of line, used to remove whitespace
     bool SUBSHELL_FLAG = false;
+    bool QUOTE_FLAG = false;
     int num_lines = 1;
 
     while ((current = get_next_byte(get_next_byte_argument)) != EOF)
@@ -973,6 +974,30 @@ make_command_stream (int (*get_next_byte) (void *),
         	    continue;
             }
 
+            if (current == '"' && QUOTE_FLAG == false)
+            {
+                QUOTE_FLAG = true;
+
+                continue;
+            }
+
+            if (current == '\n' && QUOTE_FLAG == true)
+            {
+                allocSize++;
+                buffer = checked_realloc(buffer, (2+allocSize)*sizeof(char));
+                size_t length = strlen(buffer); 
+                //printf("Buffer char%c", buffer[length]);
+                buffer[length] = ' '; 
+                buffer[length+1] = '\0'; 
+                continue;
+            }
+
+            if (current == '"' && QUOTE_FLAG == true)
+            {
+                QUOTE_FLAG = false;
+                continue;
+            }
+
             if(!COMMENT_FLAG)
             {
                 //printf("Not a comment!\n");
@@ -1042,7 +1067,7 @@ make_command_stream (int (*get_next_byte) (void *),
     }
 
     printf("\n-----------------\n");
-*/    
+*/   
 
     token_stream* stream = tokenizer(buffer);
 
@@ -1091,9 +1116,9 @@ make_command_stream (int (*get_next_byte) (void *),
 
     while (stream != NULL)
     {
-        /*
-        int k;
-        for (k = 0; k < cmd_stream->size; k++)
+        
+        //int k;
+        /*for (k = 0; k < cmd_stream->size; k++)
         {
             printf("Prev Command %d: ", k);
             if (cmd_stream->commands[k]->type == AND_COMMAND)
@@ -1134,7 +1159,7 @@ make_command_stream (int (*get_next_byte) (void *),
         }
         else
         {
-          /*  
+            /*
             printf("newcommand->type: %d\n", newcommand->type);
             printf("Commands up to current pos: %d\n", pos);
             for (k = 0; k < pos; k++)
@@ -1169,8 +1194,6 @@ make_command_stream (int (*get_next_byte) (void *),
             */
 
             cmd_stream->commands[pos] = newcommand;
-            //printf("Why does command[0] get changed?\n");
-            //printf("Type: %d word[0]: %s\n", cmd_stream->commands[0]->type, cmd_stream->commands[0]->u.word[0]);
             cmd_stream->size++;
             cmd_stream->commands = checked_realloc(cmd_stream->commands, (cmd_stream->size)*sizeof(struct command));        // WTF WHY RE_ALLOC???
             pos++;
@@ -1179,7 +1202,8 @@ make_command_stream (int (*get_next_byte) (void *),
          printf("Pos: %d ", pos-1);
          if (cmd_stream->commands[pos-1] != NULL)
              printf("Command Type: %d\n", cmd_stream->commands[pos-1]->type);   // Should match root->type
-
+        */
+         /*
         for (k = 0; k < cmd_stream->size; k++)
         {
             printf("Command %d: ", k);
@@ -1197,8 +1221,8 @@ make_command_stream (int (*get_next_byte) (void *),
             {
                 printf("SIMPLE_COMMAND:\n");
                 printf("words[0]: %s\n", cmd_stream->commands[k]->u.word[0]);
-            //printf("words[1]: %s\n", cmd_stream->commands[k]->u.word[1]);
-            //printf("words[2]: %s\n", cmd_stream->commands[k]->u.word[2]);
+                printf("words[1]: %s\n", cmd_stream->commands[k]->u.word[1]);
+                printf("words[2]: %s\n", cmd_stream->commands[k]->u.word[2]);
             }
             else if (cmd_stream->commands[k]->type == SUBSHELL_COMMAND)
                 printf("SUBSHELL_COMMAND\n");
