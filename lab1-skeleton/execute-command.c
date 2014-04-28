@@ -668,8 +668,8 @@ DependencyGraph* createGraph(command_stream_t s)
 	int i; 
 
 	DependencyGraph* graph = (DependencyGraph*) checked_malloc(sizeof(DependencyGraph));
-	graph->no_dependency = createQueue(10);
-	graph->dependency = createQueue(10);
+	graph->no_dependency = createQueue(50);
+	graph->dependency = createQueue(50);
 
 	myList2* list = (myList2*) checked_malloc(sizeof(myList2));
 	list->head = NULL;
