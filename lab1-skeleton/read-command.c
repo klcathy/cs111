@@ -565,6 +565,11 @@ command_t parser(token_stream* stream)
 	            simple->status = -1;
 	            simple->input = NULL;
 	            simple->output = NULL;
+                simple->append = NULL;
+                simple->input2 = NULL;
+                simple->output2 = NULL;
+                simple->open = NULL;
+                simple->output_c = NULL;
 	            simple->u.word = (char**) checked_malloc(2*sizeof(char*));
 	            simple->u.word[wordpos] = iter->string;
 	            simple->u.word[++wordpos] = NULL;
@@ -656,6 +661,10 @@ command_t parser(token_stream* stream)
 	        subshell->status = -1;
 	        subshell->input = NULL;
 	        subshell->output = NULL;
+            subshell->input2 = NULL;
+            subshell->output2 = NULL;
+            subshell->open = NULL;
+            subshell->output_c = NULL;
                 //subshell->word_size = 0;
 	        command_t top_command = peek(&command_stack);
 	        //printf("Top_command: Type: %d Word[0]%s Word[1]%s\n", top_command->type, top_command->u.word[0], top_command->u.word[1]);
@@ -706,6 +715,76 @@ command_t parser(token_stream* stream)
 	        CMD_FLAG = false;
 	        continue;
 	    }
+        else if (iter->type == APPEND)
+        {
+            wordpos = 0;
+            word_length = 0;
+            iter = iter->next;
+            char* next_token = iter->string;
+            command_t top_command = peek(&command_stack);
+            pop(&command_stack);
+            top_command->append = next_token;
+            push(&command_stack, top_command);
+            iter = iter->next;
+            CMD_FLAG = false;
+            continue;
+        }
+        else if (iter->type == INPUT2)
+        {
+            wordpos = 0;
+            word_length = 0;
+            iter = iter->next;
+            char* next_token = iter->string;
+            command_t top_command = peek(&command_stack);
+            pop(&command_stack);
+            top_command->input2 = next_token;
+            push(&command_stack, top_command);
+            iter = iter->next;
+            CMD_FLAG = false;
+            continue;
+        }
+        else if (iter->type == OUTPUT2)
+        {
+            wordpos = 0;
+            word_length = 0;
+            iter = iter->next;
+            char* next_token = iter->string;
+            command_t top_command = peek(&command_stack);
+            pop(&command_stack);
+            top_command->output2 = next_token;
+            push(&command_stack, top_command);
+            iter = iter->next;
+            CMD_FLAG = false;
+            continue;
+        }
+        else if (iter->type == OPEN)
+        {
+            wordpos = 0;
+            word_length = 0;
+            iter = iter->next;
+            char* next_token = iter->string;
+            command_t top_command = peek(&command_stack);
+            pop(&command_stack);
+            top_command->open = next_token;
+            push(&command_stack, top_command);
+            iter = iter->next;
+            CMD_FLAG = false;
+            continue;
+        }
+        else if (iter->type == OUTPUT_C)
+        {
+            wordpos = 0;
+            word_length = 0;
+            iter = iter->next;
+            char* next_token = iter->string;
+            command_t top_command = peek(&command_stack);
+            pop(&command_stack);
+            top_command->output_c = next_token;
+            push(&command_stack, top_command);
+            iter = iter->next;
+            CMD_FLAG = false;
+            continue;
+        }
 	    // Operators
 	    else if (iter->type == AND || iter->type == OR || iter->type == SEMICOLON || iter->type == PIPE)
 	    {
@@ -787,37 +866,6 @@ command_t parser(token_stream* stream)
 	    command_t new_command = combineCommand(first_command, second_command, operator);
 	    push(&command_stack, new_command);
     }
-    
-    /*else
-    {
-	    //printf("Operator stack is empty\n");
-	    command_t second_command = peek(&command_stack);
-	    if (second_command != NULL)
-	    {
-	        pop(&command_stack);
-	        command_t first_command = peek(&command_stack);
-	        if (first_command != NULL)
-	        {
-	        //  printf("Two commands, no operators\n");
-	        
-	        command_t simple = (command_t) checked_malloc (sizeof(struct command));
-	        simple->type = SIMPLE_COMMAND;
-	        simple->status = -1;
-	        simple->input = NULL;
-	        simple->output = NULL;
-	        simple->u.word = (char**) checked_malloc(3*sizeof(char*));
-	        simple->u.word[0] = iter->string;
-	        simple->u.word[++wordpos] = NULL;
-	        word_length += 2;
-	        CMD_FLAG = true;
-	        push(&command_stack, simple);
-	        
-	        }
-	        else
-	        push(&command_stack, second_command);
-	    }
-    }
-*/
 
     command_t root = peek(&command_stack);
     //if (root->u.word != NULL)
@@ -1167,7 +1215,7 @@ make_command_stream (int (*get_next_byte) (void *),
         else
             temp = temp->next;
     }
-   
+
     
 
     command_stream_t cmd_stream = checked_malloc(sizeof(struct command_stream));

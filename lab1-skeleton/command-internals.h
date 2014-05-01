@@ -22,13 +22,11 @@ struct command
   char *input;
   char *output;
 
-  /* Design Code */
   char *append;
-  char *input_dup;
-  char *output_dup;
+  char *input2;
+  char *output2;
   char *open;
-  char *output_clobber;
-  /**************/
+  char *output_c;
 
   int word_size;
 
