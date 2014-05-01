@@ -1181,7 +1181,7 @@ make_command_stream (int (*get_next_byte) (void *),
 
     token_stream* stream = tokenizer(buffer);
 
-    token_stream* stream2 = stream;
+/*    token_stream* stream2 = stream;
 
 
     int stream_counter = 0;
@@ -1215,7 +1215,7 @@ make_command_stream (int (*get_next_byte) (void *),
         else
             temp = temp->next;
     }
-
+*/
     
 
     command_stream_t cmd_stream = checked_malloc(sizeof(struct command_stream));
