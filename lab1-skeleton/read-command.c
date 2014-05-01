@@ -1,15 +1,5 @@
 // UCLA CS 111 Lab 1 command reading
 
-/* DESIGN PROJECT
-
-a >> b: Append a to b      
-<& : Reverse of >&?
->& output : Redirect stderr and stdout to file Equivalent to output > output 2>&1?     & causes output that goes to stderr to go to stdout
-j <> filename: Open filename for r/w, and assign file descriptor j to it 
->| : Force redirection
-
-*/
-
 #include "command.h"
 #include "command-internals.h"
 #include "alloc.h"
@@ -32,10 +22,13 @@ j <> filename: Open filename for r/w, and assign file descriptor j to it
 #define RIGHT_REDIR 9
 #define NEWLINE 10
 #define APPEND 11       // >>
+#define INPUT 12        // <&
+#define OUTPUT 13       // >&
+#define OPEN 14         // <>
+#define OUTPUT_C 15     // >|
 
 
 /****************** Stack data structure ****************************/
-// MAY NEED TO CHANGE OPERATOR STACK
 typedef struct stack
 {
     command_t command;
@@ -89,15 +82,17 @@ int peek2(myOperatorStack* stack)
     	return -1;
     return (*stack)->operator;
 }
+
 /******************** Tokenizer*************************************/
 
-// Singly linked list structure
+// Singly linked list structure that holds tokens
 typedef struct token_Node {
     int type;
     char *string;
     struct token_Node *next;
 } token_Node;
 
+// Container that holds token lists
 typedef struct token_stream {
     token_Node *head;
     token_Node *tail;
@@ -105,6 +100,9 @@ typedef struct token_stream {
     int size;
 } token_stream;
 
+/*
+    Inserts token at end of a token stream.
+*/
 void insert_token(token_stream* stream, token_Node token)
 {
     // Create temp token
@@ -129,6 +127,9 @@ void insert_token(token_stream* stream, token_Node token)
     return;
 }
 
+/*
+    Creates a token_stream from input.
+*/
 token_stream* tokenizer(char* input)
 {
     char c;
@@ -342,7 +343,7 @@ token_stream* tokenizer(char* input)
 
     }
 
-    // left-over tokens?
+    // left-over tokens
     if (temptoken.type != INIT)
     	insert_token(stream, temptoken);
 
@@ -368,19 +369,18 @@ int precedence(int oper)
 
     for (i = 0; i < 5; i++)
     {
-    if (oper == operators[i])
-    {
-        pos = i;
-        break;
-    }
+        if (oper == operators[i])
+        {
+            pos = i;
+            break;
+        }
     }
     if (pos == -1)
-    return -1;
+        return -1;
+
     return rank[pos];
 }
 
-
-// NOT SURE IF hANDLING NEWLINE PROPERLY (THINK I AM)
 command_t combineCommand(command_t first, command_t second, int operator)
 {
     switch(operator)
@@ -456,8 +456,6 @@ command_t combineCommand(command_t first, command_t second, int operator)
 		    break;
     }
 }
-
-// MIGHT NEED TO ADD NULL BYTE AT END (DONT THINK SO)
 
 command_t parser(token_stream* stream)
 {
@@ -774,12 +772,9 @@ command_t parser(token_stream* stream)
     }
 
 }
-/*******************************************************************/
 
-// FIX UNNCESSARY NEWLINES TOKENS (GHETTO FIXED)
-// SOME WEIRD SHIT HAPPENS IN COMMENTS E.G. #a;b --> INVALID SEMICOLON
-// GOT FUCKED ON SUBSHELL
 
+/*************make_command_stream and read_command_stream*********************/
 
 command_stream_t
 make_command_stream (int (*get_next_byte) (void *),
@@ -795,11 +790,11 @@ make_command_stream (int (*get_next_byte) (void *),
     bool OR_FLAG = false;         // if || then true
     bool REDIR_FLAG = false; 
     bool COMMENT_FLAG = false;
-    int BEGINNING_FLAG = 1; 
+    bool BEGINNING_FLAG = true; 
     size_t allocSize = 0;
-    bool LINE_FLAG = true;      // Flags beginning of line, used to remove whitespace
-    bool SUBSHELL_FLAG = false;
-    bool QUOTE_FLAG = false;
+    bool LINE_FLAG = true;      // Flags beginning of line
+    bool SUBSHELL_FLAG = false;     // Flags that we are in a subshell
+    bool QUOTE_FLAG = false;    // Flags that we are in quotes
     int num_lines = 1;
 
     while ((current = get_next_byte(get_next_byte_argument)) != EOF)
@@ -810,13 +805,13 @@ make_command_stream (int (*get_next_byte) (void *),
                 num_lines++;
 
             // operator cannot be first character in command
-            if ((BEGINNING_FLAG == 1) && (((current == '|') || (current == '<') || (current == '&')) && (last == '\0')))
+            if ((BEGINNING_FLAG == true) && (((current == '|') || (current == '<') || (current == '&')) && (last == '\0')))
             {
                 fprintf(stderr, "%d: Invalid syntax\n", num_lines);
                 exit(1);
             }
 
-            BEGINNING_FLAG = 0; 
+            BEGINNING_FLAG = false; 
 
 
             if (current == '(')
@@ -828,6 +823,12 @@ make_command_stream (int (*get_next_byte) (void *),
             {
                 SUBSHELL_FLAG = false;
                 unpair--;
+
+                if (last == ' ')
+                {
+                    size_t length = strlen(buffer);
+                    buffer[length-1] = '\0';
+                }
             }
 
             if(current == '\n' && (last_nospace == '\0') && COMMENT_FLAG == false)
@@ -858,8 +859,6 @@ make_command_stream (int (*get_next_byte) (void *),
             if (current == ';')
             {
                 ;
-                //current = '\n';
-                //continue;
             }
 
             if (current == ';' && last == ' ')
@@ -916,7 +915,7 @@ make_command_stream (int (*get_next_byte) (void *),
                 buffer[length-1] = '\0';
             }
 
-            if ((current == ' ') && (last == '>' || last == '<' || last == '|' || last == '&'))
+            if ((current == ' ') && (last == '>' || last == '<' || last == '|' || last == '&' || last_nospace == '('))
                 continue;
 
             // Comment after special token
@@ -935,15 +934,6 @@ make_command_stream (int (*get_next_byte) (void *),
                 COMMENT_FLAG = true;
                 continue;
             }
-
-            /*
-            if (current == '\n' && COMMENT_FLAG == true)
-            {
-                COMMENT_FLAG = false;
-                //printf("Changing COMMENT_FLAG to false!\n");
-                continue;
-            }
-            */
 
             if (current == '\n' && (last_nospace == '|' || last_nospace == '&'))
             {
@@ -1062,19 +1052,16 @@ make_command_stream (int (*get_next_byte) (void *),
 	    exit(1); 
     }
 
-/*
+
     int j;
     printf("Buffer\n");
     for (j = 0; j < strlen(buffer); j++)
     {
-    //if (buffer[j] == '\n')
-        //printf("new\n");
-    //else
         printf("%c", buffer[j]);
     }
 
     printf("\n-----------------\n");
-   */
+
 
     token_stream* stream = tokenizer(buffer);
 /*

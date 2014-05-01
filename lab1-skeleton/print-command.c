@@ -48,6 +48,19 @@ command_indented_print (int indent, command_t c)
     printf ("<%s", c->input);
   if (c->output)
     printf (">%s", c->output);
+
+  /* Design Code */
+  if (c->append)
+    printf (">>%s", c->append);
+  if (c->input_dup)
+    printf ("<&%s", c->input_dup);
+  if (c->output_dup)
+    printf (">&%s", c->output_dup);
+  if (c->open)
+    printf ("<>%s", c->open);
+  if (c->output_clobber)
+    printf (">|%s", c->output_clobber);
+  /**********************************/
 }
 
 void
