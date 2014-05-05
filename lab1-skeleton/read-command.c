@@ -920,11 +920,14 @@ make_command_stream (int (*get_next_byte) (void *),
                 num_lines++;
 
             // operator cannot be first character in command
-            if ((BEGINNING_FLAG == true) && (((current == '|') || (current == '<') || (current == '&')) && (last == '\0')))
+            if ((BEGINNING_FLAG == true) && (((current == '|') || (current == '<') || (current == '&') || (current == '>')) && (last == '\0')))
             {
                 fprintf(stderr, "%d: Invalid syntax\n", num_lines);
                 exit(1);
             }
+
+            if (BEGINNING_FLAG == true && current == ' ')
+                continue;
 
             BEGINNING_FLAG = false; 
 
@@ -939,11 +942,13 @@ make_command_stream (int (*get_next_byte) (void *),
                 SUBSHELL_FLAG = false;
                 unpair--;
 
+
                 if (last == ' ')
                 {
                     size_t length = strlen(buffer);
                     buffer[length-1] = '\0';
                 }
+                
             }
 
             if(current == '\n' && (last_nospace == '\0') && COMMENT_FLAG == false)
@@ -963,7 +968,13 @@ make_command_stream (int (*get_next_byte) (void *),
             }
             if (current == '|' && (last_nospace == '\n' || last == '\0'))
             {
-                fprintf(stderr, "%d: Invalid semicolon\n", num_lines);
+                fprintf(stderr, "%d: Invalid pipe\n", num_lines);
+                exit(1);
+            }
+
+            if ((current == '>' || current == '<') && (last_nospace == '\n' || last == '\0'))
+            {
+                fprintf(stderr, "%d: Invalid syntax\n", num_lines);
                 exit(1);
             }
             if ((current == '<' && last_nospace == '<' && last_last_nospace == '<') || (current == '>' && last_nospace == '>' && last_last_nospace == '>'))
@@ -971,6 +982,66 @@ make_command_stream (int (*get_next_byte) (void *),
                 fprintf(stderr, "%d: Invalid redirection\n", num_lines);
                 exit(1);
             }
+
+            if (current == '&')
+            {
+                if (last_nospace == '<' && last_last_nospace == '<')
+                {
+                    fprintf(stderr, "%d: Invalid syntax\n", num_lines);
+                    exit(1);
+                }
+                if (last_nospace == '&' && last_last_nospace == '<')
+                {
+                    fprintf(stderr, "%d: Invalid syntax\n", num_lines);
+                    exit(1);
+                }
+                if (last_nospace == '>' && last_last_nospace == '>')
+                {
+                    fprintf(stderr, "%d: Invalid syntax\n", num_lines);
+                    exit(1);
+                }
+                if (last_nospace == '|' && last_last_nospace == '>')
+                {
+                    fprintf(stderr, "%d: Invalid syntax\n", num_lines);
+                    exit(1);
+                }
+                if (last_nospace == '&' && last_last_nospace == '>')
+                {
+                    fprintf(stderr, "%d: Invalid syntax\n", num_lines);
+                    exit(1);
+                }
+            }
+
+            if (current == '|')
+            {
+                if (last_nospace == '<' && last_last_nospace == '<')
+                {
+                    fprintf(stderr, "%d: Invalid syntax\n", num_lines);
+                    exit(1);
+                }
+                if (last_nospace == '&' && last_last_nospace == '<')
+                {
+                    fprintf(stderr, "%d: Invalid syntax\n", num_lines);
+                    exit(1);
+                }
+                if (last_nospace == '>' && last_last_nospace == '>')
+                {
+                    fprintf(stderr, "%d: Invalid syntax\n", num_lines);
+                    exit(1);
+                }
+                if (last_nospace == '|' && last_last_nospace == '>')
+                {
+                    fprintf(stderr, "%d: Invalid syntax\n", num_lines);
+                    exit(1);
+                }
+                if (last_nospace == '&' && last_last_nospace == '>')
+                {
+                    fprintf(stderr, "%d: Invalid syntax\n", num_lines);
+                    exit(1);
+                }
+            }
+
+
             if (current == ';')
             {
                 ;
@@ -1030,7 +1101,7 @@ make_command_stream (int (*get_next_byte) (void *),
                 buffer[length-1] = '\0';
             }
 
-            if ((current == ' ') && (last == '>' || last == '<' || last == '|' || last == '&' || last_nospace == '('))
+            if ((current == ' ') && (last == '>' || last == '<' || last == '|' || last == '&')) //last_nospace == '('))
                 continue;
 
             // Comment after special token
@@ -1047,6 +1118,13 @@ make_command_stream (int (*get_next_byte) (void *),
             {
                 //printf("IN A COMMENT!\n");
                 COMMENT_FLAG = true;
+                continue;
+            }
+
+            if (current == '\n' && COMMENT_FLAG == true)
+            {
+                COMMENT_FLAG = false;
+                //printf("Changing COMMENT_FLAG to false!\n");
                 continue;
             }
 
@@ -1086,6 +1164,7 @@ make_command_stream (int (*get_next_byte) (void *),
         	    continue;
             }
 
+
             if (current == '"' && QUOTE_FLAG == false)
             {
                 QUOTE_FLAG = true;
@@ -1114,9 +1193,9 @@ make_command_stream (int (*get_next_byte) (void *),
             {
                 //printf("Not a comment!\n");
                 if (current != '\n')
-                LINE_FLAG = false;
+                    LINE_FLAG = false;
                 else
-                LINE_FLAG = true;
+                    LINE_FLAG = true;
 
                 allocSize++;
                 buffer = checked_realloc(buffer, (2+allocSize)*sizeof(char));   // 1 for null-byte and 1 for next char
@@ -1124,7 +1203,7 @@ make_command_stream (int (*get_next_byte) (void *),
                 size_t length = strlen(buffer);
                 buffer[length] = current;
                 buffer[length+1] = '\0';
-                //printf("%c", buffer[length]);
+                // printf("%c ", buffer[length]);
                 //printf("\n");
                 last = current;
                 if (current != ' ')
@@ -1150,7 +1229,7 @@ make_command_stream (int (*get_next_byte) (void *),
     }
 
     // ghetto fix for detecting invalid ||
-    if (last == '|')
+    if (last == '|' || last == '&' || last == '>' || last == '<')
     {
         fprintf(stderr, "%d: Invalid syntax\n", num_lines);
         exit(1); 
