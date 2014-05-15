@@ -1423,7 +1423,7 @@ ospfs_create(struct inode *dir, struct dentry *dentry, int mode, struct nameidat
 //               -ENOSPC       if the disk is full & the file can't be created;
 //               -EIO          on I/O error.
 //
-//   EXERCISE: Complete this function.
+//   COMPLETED: Complete this function.
 
 static int
 ospfs_symlink(struct inode *dir, struct dentry *dentry, const char *symname)
@@ -1431,7 +1431,7 @@ ospfs_symlink(struct inode *dir, struct dentry *dentry, const char *symname)
 	ospfs_inode_t *dir_oi = ospfs_inode(dir->i_ino);
 	uint32_t entry_ino = 0;
 
-	/* EXERCISE: Your code here. */
+	/* COMPLETED: Your code here. */
 	ospfs_symlink_inode_t* file_oi = NULL;
 	ospfs_direntry_t* new_direntry = NULL;
 	uint32_t blockno = 0;
@@ -1449,7 +1449,33 @@ ospfs_symlink(struct inode *dir, struct dentry *dentry, const char *symname)
 	if (find_direntry(dir_oi, dentry->d_name.name, dentry->d_name.len) != NULL)
 		return -EEXIST;
 
+	// Get a free inode
 	entry_ino = find_free_inode();
+
+	if (entry_ino == 0)
+		return -ENOSPC;
+
+	file_oi = ospfs_inode(entry_ino);
+
+	if (file_oi == NULL)
+		return -EIO;
+
+	// Initialize new inode struct
+	file_oi->oi_size = 0;
+	file_oi->oi_ftype = OSPFS_FTYPE_SYMLINK;
+	file_oi->oi_nlink = 1;
+	memcpy(file_oi->oi_symlink, symname, strlen(symname));
+
+	// Create new directory entry
+	new_direntry = create_blank_direntry(dir_oi);
+
+	if (IS_ERR(new_direntry))
+		return PTR_ERR(new_direntry);
+
+	// Initialize new directory entry
+	new_direntry->od_ino = entry_ino;
+	memcpy(new_direntry->od_name, dentry->d_name.name, dentry->d_name.len);
+	new_direntry->od_name[dentry->d_name.len] = '\0';
 
 	/* Execute this code after your function has successfully created the
 	   file.  Set entry_ino to the created file's inode number before
