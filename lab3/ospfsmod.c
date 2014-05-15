@@ -418,7 +418,7 @@ ospfs_dir_lookup(struct inode *dir, struct dentry *dentry, struct nameidata *ign
 //   Returns: 1 at end of directory, 0 if filldir returns < 0 before the end
 //     of the directory, and -(error number) on error.
 //
-//   EXERCISE: Finish implementing this function.
+//   COMPLETED: Finish implementing this function.
 
 static int
 ospfs_dir_readdir(struct file *filp, void *dirent, filldir_t filldir)
@@ -567,7 +567,7 @@ ospfs_unlink(struct inode *dirino, struct dentry *dentry)
 static uint32_t
 allocate_block(void)
 {
-	/* EXERCISE: Your code here */
+	/* COMPLETED: Your code here */
 	uint32_t i;
 	uint32_t offset;
 
@@ -605,6 +605,8 @@ allocate_block(void)
 static void
 free_block(uint32_t blockno)
 {
+	//COMPLETED
+
 	// check bootsector, superblock
 	if (blockno < OSPFS_FREEMAP_BLK)
 		return; 
@@ -660,16 +662,14 @@ free_block(uint32_t blockno)
 // Returns: 0 if block index 'b' requires using the doubly indirect
 //	       block, -1 if it does not.
 //
-// EXERCISE: Fill in this function.
+// COMPLETED: Fill in this function.
 // KAILIN
 
 static int32_t
 indir2_index(uint32_t b)
 {
-	// Your code here.
-
 	// if b requires using doubly indirect block
-	if (b > (OSPFS_NDIRECT + OSPFS_NINDIRECT) && b < OSPFS_MAXFILEBLKS)
+	if (b >= (OSPFS_NDIRECT + OSPFS_NINDIRECT) && b < OSPFS_MAXFILEBLKS)
 		return 0;
 	// if b does not 
 	return -1;
@@ -685,14 +685,23 @@ indir2_index(uint32_t b)
 //	    otherwise, the offset of the relevant indirect block within
 //		the doubly indirect block.
 //
-// EXERCISE: Fill in this function.
+// COMPLETED: Fill in this function.
 // KAILIN
 
 static int32_t
 indir_index(uint32_t b)
 {
 	// Your code here.
-	return -1;
+
+	// if b is one of file's direct blocks
+	if (b < OSPFS_NDIRECT)
+		return -1; 
+	// if b is in first of file's indirect blocks
+	else if (b < (OSPFS_NDIRECT + OSPFS_NINDIRECT))
+		return 0; 
+	// if b is in rest of file's indirect blocks
+	else if (b < OSPFS_MAXFILEBLKS)
+		return ((b - (OSPFS_NDIRECT + OSPFS_NINDIRECT))/OSPFS_NINDIRECT);
 }
 
 
@@ -703,14 +712,29 @@ indir_index(uint32_t b)
 // Returns: the index of block b in the relevant indirect block or the direct
 //	    block array.
 //
-// EXERCISE: Fill in this function.
+// COMPLETED: Fill in this function.
 // KAILIN
 
 static int32_t
 direct_index(uint32_t b)
 {
 	// Your code here.
-	return -1;
+
+	// b is one of file's direct blocks
+	if (b < OSPFS_NDIRECT)
+		return b; 
+
+	// b is one of file's first indirect blocks
+	else if (b < (OSPFS_NDIRECT + OSPFS_NINDIRECT))
+		return (b - OSPFS_NDIRECT); 
+
+	// b is one of file's doubly indirect blocks
+	else if (b < OSPFS_MAXFILEBLKS)
+		return (b - OSPFS_NDIRECT - OSPFS_NINDIRECT) % OSPFS_NINDIRECT;
+	
+	// should never do this
+	else
+		return -1;
 }
 
 
@@ -730,7 +754,7 @@ direct_index(uint32_t b)
 //          then oi->oi_size should remain unchanged. Any newly
 //          allocated blocks should be erased (set to zero).
 //
-// EXERCISE: Finish off this function.
+// COMPLETED: Finish off this function.
 //
 // Remember that allocating a new data block may require allocating
 // as many as three disk blocks, depending on whether a new indirect
@@ -1062,7 +1086,7 @@ ospfs_notify_change(struct dentry *dentry, struct iattr *attr)
 //   as 'f_pos'; read data starting at that position, and update the position
 //   when you're done.
 //
-//   EXERCISE: Complete this function.
+//   COMPLETED: Complete this function.
 
 static ssize_t
 ospfs_read(struct file *filp, char __user *buffer, size_t count, loff_t *f_pos)
@@ -1073,7 +1097,17 @@ ospfs_read(struct file *filp, char __user *buffer, size_t count, loff_t *f_pos)
 
 	// Make sure we don't read past the end of the file!
 	// Change 'count' so we never read past the end of the file.
-	/* EXERCISE: Your code here */
+	/* COMPLETED: Your code here */
+
+	// Check overflow
+	if ((*f_pos + count) < *f_pos)
+		return -EIO;
+
+	if (*f_pos >= oi->oi_size)
+		count = 0;
+	// Don't read past end of file
+	else if ((*f_pos + count) > oi->oi_size)
+		count = oi->oi_size - *f_pos;	
 
 	// Copy the data to user block by block
 	while (amount < count && retval >= 0) {
@@ -1093,9 +1127,19 @@ ospfs_read(struct file *filp, char __user *buffer, size_t count, loff_t *f_pos)
 		// Copy data into user space. Return -EFAULT if unable to write
 		// into user space.
 		// Use variable 'n' to track number of bytes moved.
-		/* EXERCISE: Your code here */
-		retval = -EIO; // Replace these lines
-		goto done;
+		/* COMPLETED: Your code here */
+		uint32_t offset = *f_pos % OSPFS_BLKSIZE;
+		uint32_t copy_count = count - amount;
+		n = OSPFS_BLKSIZE - offset;
+
+		// Copy bytes until end of block
+		if (n > copy_count)
+			n = copy_count;
+
+		// Returns the number of bytes that could not be copied
+		if (copy_to_user(buffer, data + offset, n) > 0)
+			return -EFAULT;
+
 
 		buffer += n;
 		amount += n;
@@ -1122,7 +1166,7 @@ ospfs_read(struct file *filp, char __user *buffer, size_t count, loff_t *f_pos)
 //   where you cannot read past the end of the file, it is OK to write past
 //   the end of the file; this should simply change the file's size.
 //
-//   EXERCISE: Complete this function.
+//   COMPLETED: Complete this function.
 
 static ssize_t
 ospfs_write(struct file *filp, const char __user *buffer, size_t count, loff_t *f_pos)
@@ -1133,11 +1177,15 @@ ospfs_write(struct file *filp, const char __user *buffer, size_t count, loff_t *
 
 	// Support files opened with the O_APPEND flag.  To detect O_APPEND,
 	// use struct file's f_flags field and the O_APPEND bit.
-	/* EXERCISE: Your code here */
+	/* COMPLETED Your code here */
+	if (filp->f_flags &= O_APPEND)
+		*f_pos = oi->oi_size;
 
 	// If the user is writing past the end of the file, change the file's
 	// size to accomodate the request.  (Use change_size().)
-	/* EXERCISE: Your code here */
+	/* COMPLETED: Your code here */
+	if (*f_pos + count > oi->oi_size)
+		retval = change_size(oi, *f_pos + count);
 
 	// Copy data block by block
 	while (amount < count && retval >= 0) {
@@ -1156,9 +1204,17 @@ ospfs_write(struct file *filp, const char __user *buffer, size_t count, loff_t *
 		// Copy data from user space. Return -EFAULT if unable to read
 		// read user space.
 		// Keep track of the number of bytes moved in 'n'.
-		/* EXERCISE: Your code here */
-		retval = -EIO; // Replace these lines
-		goto done;
+		/* COMPLETED: Your code here */
+		
+		n = OSPFS_BLKSIZE - *f_pos % OSPFS_BLKSIZE;
+
+		if (n > count - amount)
+			n = count - amount;
+		if (copy_from_user(data + *f_pos % OSPFS_BLKSIZE, buffer, n) != 0)
+		{
+			retval = -EFAULT;
+			goto done;
+		}
 
 		buffer += n;
 		amount += n;
@@ -1464,3 +1520,4 @@ module_exit(exit_ospfs_fs)
 MODULE_AUTHOR("Roger Chen and Kailin Chang");
 MODULE_DESCRIPTION("OSPFS");
 MODULE_LICENSE("GPL");
+
