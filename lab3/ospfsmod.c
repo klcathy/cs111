@@ -605,9 +605,6 @@ allocate_block(void)
 static void
 free_block(uint32_t blockno)
 {
-	/* EXERCISE: Your code here */
-	// KAILIN
-
 	// check bootsector, superblock
 	if (blockno < OSPFS_FREEMAP_BLK)
 		return; 
@@ -617,15 +614,20 @@ free_block(uint32_t blockno)
 		return; 
 
 	// check inode block
-	if (blockno >= ospfs_super_t.os_firstinob)
+	if (blockno >= ospfs_super_t.os_firstinob && blockno < (ospfs_super_t.os_firstinob + ospfs_super_t.os_ninodes))
+		return;  
 	
 	// out of bounds
+	if (blockno > (ospfs_super_t.os_nblocks-1))
+		return; 
 
 	// do some division shit to get block data from blockno
-
-	// if its already free (free is represented by bit 1), return
-
+	uint32_t i = blockno/OSPFS_BLKBITSIZE; 
+	uint32_t offset = blockno%OSPFS_BLKBITSIZE; 
+	void* vector = ospfs_block(OSPFS_FREEMAP_BLK+i);
+	
 	// set bit vector to 1
+	bitvector_set(vector, offset);
 
 
 }
