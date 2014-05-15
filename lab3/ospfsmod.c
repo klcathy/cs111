@@ -216,6 +216,25 @@ ospfs_inode_data(ospfs_inode_t *oi, uint32_t offset)
 	return (uint8_t *) ospfs_block(blockno) + (offset % OSPFS_BLKSIZE);
 }
 
+static inline uint32_t
+find_free_inode(void)
+{
+	uint32_t i;
+	ospfs_inode_t *temp;
+
+	// inode 1: reserved for root
+	// inode 0: must never be used
+	for (i = 2; i < ospfs_super->os_ninodes; i++)
+	{
+		temp = ospfs_block(i);	// load inode struct
+		if (temp->oi_nlink == 0)		// no hardlinks => free
+			return i;
+	}
+
+	// No free inodes
+	return 0;
+}
+
 
 /*****************************************************************************
  * LOW-LEVEL FILE SYSTEM FUNCTIONS
@@ -1413,7 +1432,24 @@ ospfs_symlink(struct inode *dir, struct dentry *dentry, const char *symname)
 	uint32_t entry_ino = 0;
 
 	/* EXERCISE: Your code here. */
-	return -EINVAL;
+	ospfs_symlink_inode_t* file_oi = NULL;
+	ospfs_direntry_t* new_direntry = NULL;
+	uint32_t blockno = 0;
+	struct inode* i;
+
+	// Check that the file type is a directory
+	if (dir_oi->oi_type != OSPFS_FTYPE_DIR)
+		return -EIO;
+
+	// Check that the file name is too long
+	if ((dentry->d_name.len > OSPFS_MAXSYMLINKLEN) || strlen(symname) > OSPFS_MAXSYMLINKLEN)
+		return -ENAMETOOLONG;
+
+	// Check if the file already exists
+	if (find_direntry(dir_oi, dentry->d_name.name, dentry->d_name.len) != NULL)
+		return -EEXIST;
+
+	entry_ino = find_free_inode();
 
 	/* Execute this code after your function has successfully created the
 	   file.  Set entry_ino to the created file's inode number before
