@@ -1,7 +1,7 @@
 #include <linux/autoconf.h>
 #include <linux/version.h>
 #ifndef EXPORT_SYMTAB
-# define EXPORT_SYMTAB
+#define EXPORT_SYMTAB
 #endif
 #include <linux/module.h>
 #include <linux/moduleparam.h>
@@ -451,9 +451,12 @@ ospfs_dir_readdir(struct file *filp, void *dirent, filldir_t filldir)
 		/* If at the end of the directory, set 'r' to 1 and exit
 		 * the loop.  For now we do this all the time.
 		 *
-		 * EXERCISE: Your code here */
-		r = 1;		/* Fix me! */
-		break;		/* Fix me! */
+		 * COMPLETED: Your code here */
+		if (f_pos >= dir_oi->oi_size)
+		{
+			r = 1;
+			break;
+		}
 
 		/* Get a pointer to the next entry (od) in the directory.
 		 * The file system interprets the contents of a
@@ -475,7 +478,19 @@ ospfs_dir_readdir(struct file *filp, void *dirent, filldir_t filldir)
 		 * advance to the next directory entry.
 		 */
 
-		/* EXERCISE: Your code here */
+		/* COMPLETED: Your code here */
+		 od = ospfs_inode_data(dir_oi, (f_pos-2) * OSFPS_DIRENTRY_SIZE);
+		 entry_oi = ospfs_inode(od->od_ino);
+
+		 // if directory is not blank
+		 if (od->od_ino != 0)
+		 {
+		 	ok_so_far = filldir(dirent, od->od_name, strlen(od->od_name), f_pos, od->od_ino, entry_oi->oi_ftype);
+		 }
+
+		 // advance to next directory entry
+		 if ((ok_so_far >= 0) || (od->od_ino == 0))
+		 	f_pos++;
 	}
 
 	// Save the file position and return!
@@ -553,6 +568,25 @@ static uint32_t
 allocate_block(void)
 {
 	/* EXERCISE: Your code here */
+	uint32_t i;
+	uint32_t offset;
+
+	for (i = OSPFS_FREEMAP_BLK; i <= (ospfs_super->os_firstinob-1); i++)
+	{
+		void* bitmap_ptr = ospfs_block(index);
+		for (offset = 0; offset < OSPFS_BLKBITSIZE; offset++)
+		{
+			if (bitvector_test(bitmap_ptr, offset) == 1)
+			{
+				bitvector_clear(bitmap_ptr, offset);
+
+				// Return block #
+				return (index - OSPFS_FREEMAP_BLK) * OSPFS_BLKBITSIZE + offset;
+			}
+		}
+	}
+
+	// Return 0 if disk is full 
 	return 0;
 }
 
@@ -572,6 +606,28 @@ static void
 free_block(uint32_t blockno)
 {
 	/* EXERCISE: Your code here */
+	// KAILIN
+
+	// check bootsector, superblock
+	if (blockno < OSPFS_FREEMAP_BLK)
+		return; 
+
+	// check freeblock bitmap
+	if (blockno >= OSPFS_FREEMAP_BLK && blockno < ospfs_super_t.os_firstinob)
+		return; 
+
+	// check inode block
+	if (blockno >= ospfs_super_t.os_firstinob)
+	
+	// out of bounds
+
+	// do some division shit to get block data from blockno
+
+	// if its already free (free is represented by bit 1), return
+
+	// set bit vector to 1
+
+
 }
 
 
@@ -609,6 +665,11 @@ static int32_t
 indir2_index(uint32_t b)
 {
 	// Your code here.
+
+	// if b requires using doubly indirect block
+	if (b > (OSPFS_NDIRECT + OSPFS_NINDIRECT) && b < OSPFS_MAXFILEBLKS)
+		return 0;
+	// if b does not 
 	return -1;
 }
 
@@ -682,6 +743,8 @@ direct_index(uint32_t b)
 //     indirect blocks.
 //  3) update the oi->oi_size field
 
+// NOT SURE IF I NEED TO CAST OSPFS_BLOCK AS UINT_32T*
+
 static int
 add_block(ospfs_inode_t *oi)
 {
@@ -689,10 +752,130 @@ add_block(ospfs_inode_t *oi)
 	uint32_t n = ospfs_size2nblocks(oi->oi_size);
 
 	// keep track of allocations to free in case of -ENOSPC
-	uint32_t *allocated[2] = { 0, 0 };
+	uint32_t *allocated[3] = { 0, 0, 0 };
 
-	/* EXERCISE: Your code here */
-	return -EIO; // Replace this line
+	/* COMPLETED: Your code here */
+	
+	if (n < OSPFS_NDIRECT)
+	{
+		allocated[0] = allocate_block();
+
+		if (allocated[0] == 0)
+			return -ENOSPC;
+
+		memset(ospfs_block(allocated[0]), 0, OSPFS_BLKSIZE);
+		oi->oi_direct[n] = allocated[0];
+	}
+	else if (n >= OSPFS_NDIRECT && n < (OSPFS_NDIRECT + OSPFS_NINDIRECT))
+	{
+		if (n == OSPFS_NDIRECT)
+		{
+			allocated[0] = allocate_block();
+
+			if (allocated[0] == 0)
+				return -ENOSPC;
+
+			memset(ospfs_block(allocated[0]), 0, OSPFS_BLKSIZE);
+			allocated[1] = allocate_block();
+
+			if (allocated[1] == 0)
+			{
+				free_block(allocated[0]);
+				return -ENOSPC;
+			}
+
+			memset(ospfs_block(allocated[1]), 0, OSPFS_BLKSIZE);
+			oi->oi_indirect = allocated[0];
+			uint32_t* indirect_block = ospfs_block(oi->oi_indirect);
+			indirect_block[0] = allocated[1];
+		}
+		else
+		{
+			allocated[0] = allocate_block();
+
+			if (allocated[0] == 0)
+				return -ENOSPC;
+
+			memset(ospfs_block(allocated[0]), 0, OSPFS_BLKSIZE);
+			uint32_t* indirect_block = ospfs_block(oi->oi_indirect);
+			indirect_block[direct_index(n)] = allocated[0];
+		}
+	}
+	else if (n >= (OSPFS_NDIRECT + OSPFS_NINDIRECT) && n < OSPFS_MAXFILEBLKS)
+	{
+		if (n == OSPFS_NDIRECT + OSPFS_NINDIRECT)
+		{
+			allocated[0] = allocate_block();
+
+			if (allocated[0] == 0)
+				return -ENOSPC;
+
+			memset(ospfs_block(allocated[0]), 0, OSPFS_BLKSIZE);
+			allocated[1] = allocate_block();
+
+			if (allocated[1] == 0)
+			{
+				free_block(allocated[0]);
+				return -ENOSPC;
+			}
+
+			memset(ospfs_block(allocated[1]), 0, OSPFS_BLKSIZE);
+			allocated[2] = allocate_block();
+
+			if (allocated[2] == 0)
+			{
+				free_block(allocated[1]);
+				free_block(allocated[0]);
+				return -ENOSPC;
+			}
+
+			memset(ospfs_block(allocated[2]), 0, OSPFS_BLKSIZE);
+			oi->oi_indirect2 = allocated[0];
+			uint32_t* indirect2_block = ospfs_block(oi->oi_indirect2);
+			indirect2_block[0] = allocated[1];
+			uint32_t* indirect_block = ospfs_block(indirect2_block[0]);
+			indirect_block[0] = allocated[2];
+		}
+		else if (direct_index(n) == 0)
+		{
+			allocated[0] = allocate_block();
+
+			if (allocated[0] == 0)
+				return -ENOSPC;
+
+			memset(ospfs_block(allocated[0]), 0, OSPFS_BLKSIZE);
+			allocated[1] = allocate_block();
+
+			if (allocated[1] == 0)
+			{
+				free_block(allocated[0]);
+				return -ENOSPC;
+			}
+
+			memset(ospfs_block(allocated[1]), 0, OSPFS_BLKSIZE);
+			uint32_t* indirect2_block = ospfs_block(oi->oi_indirect2);
+			indirect2_block[indir_index(n)] = allocated[0];
+			uint32_t* indirect_block = ospfs_block(indirect2_block[indir_index(n)]);
+			indirect_block[0] = allocated[1];
+		}
+		else
+		{
+			allocated[0] = allocate_block();
+
+			if (allocated[0] == 0)
+				return -ENOSPC;
+
+			memset(ospfs_block(allocated[0]), 0, OSPFS_BLKSIZE);
+			uint32_t* indirect2_block = ospfs_block(oi->oi_indirect2);
+			uint32_t* indirect_block = ospfs_block(indirect2_block[indir_index(n)]);
+			indirect_block[direct_index(n)] = allocated[0];
+		}
+	}
+	else 
+		return -ENOSPC;
+
+	oi->oi_size = (n+1) * OSPFS_BLKSIZE;
+	return 0;
 }
 
 
@@ -709,7 +892,7 @@ add_block(ospfs_inode_t *oi)
 //          instance if an indirect block that should be there isn't),
 //          then oi->oi_size should remain unchanged.
 //
-// EXERCISE: Finish off this function.
+// COMPLETED: Finish off this function.
 //
 // Remember that you must free any indirect and doubly-indirect blocks
 // that are no longer necessary after shrinking the file.  Removing a
@@ -724,8 +907,48 @@ remove_block(ospfs_inode_t *oi)
 	// current number of blocks in file
 	uint32_t n = ospfs_size2nblocks(oi->oi_size);
 
-	/* EXERCISE: Your code here */
-	return -EIO; // Replace this line
+	/* COMPLETED: Your code here */
+	if (n <= 0)
+		return -EIO;
+	if (n <= OSPFS_NDIRECT)
+	{
+		free_block(oi->oi_direct[n-1]);
+		oi->oi_direct[n-1] = 0;
+	} 
+	else if (n > OSPFS_NDIRECT && n <= (OSPFS_NDIRECT + OSPFS_NINDIRECT))
+	{
+		uint32_t* indirect_block = ospfs_block(oi->oi_indirect);
+		free_block(indirect_block[direct_index(n)]);
+		indirect_block[direct_index(n)] = 0;
+
+		if (direct_index(n) == 0)
+		{
+			free_block(oi->oi_indirect);
+			oi->oi_indirect = 0;
+		}
+	}
+	else if (n > (OSPFS_NDIRECT + OSPFS_NINDIRECT) && n < OSPFS_MAXFILEBLKS)
+	{
+		uint32_t* indirect2_block = ospfs_block(oi->oi_indirect2);
+		uint32_t* indirect_block = ospfs_block(indirect2_block[n]);
+		free_block(indirect_block[direct_index(n)]);
+		indirect_block[direct_index(n)] = 0;
+
+		if (direct_index(n) == 0)
+		{
+			free_block(indirect2_block[n]);
+			indirect2_block[indir_index(n)] = 0;
+
+			if (indir_index(n) == 0)
+			{
+				free_block(oi->oi_indirect2);
+				oi->oi_indirect2 = 0;
+			}
+		}
+	}
+
+	oi->oi_size = (n-1) * OSPFS_BLKSIZE;
+	return 0;
 }
 
 
@@ -1236,6 +1459,6 @@ module_init(init_ospfs_fs)
 module_exit(exit_ospfs_fs)
 
 // Information about the module
-MODULE_AUTHOR("Skeletor");
+MODULE_AUTHOR("Roger Chen and Kailin Chang");
 MODULE_DESCRIPTION("OSPFS");
 MODULE_LICENSE("GPL");
