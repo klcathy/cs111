@@ -1329,7 +1329,29 @@ create_blank_direntry(ospfs_inode_t *dir_oi)
 	//    entries and return one of them.
 
 	/* EXERCISE: Your code here. */
-	return ERR_PTR(-EINVAL); // Replace this line
+	int off;
+
+	if (dir_oi->oi_ftype != OSPFS_FTYPE_DIR)
+		return ERR_PTR(-EIO);
+
+	for (off = 0; off < dir_oi->oi_size; off += OSPFS_DIRENTRY_SIZE)
+	{
+		ospfs_direntry_t *od = ospfs_inode_data(dir_oi, off);
+		// if inode # is 0, direntry is empty 
+		if (od->od_ino == 0)
+			return od;
+	}
+
+	// add a block
+	uint32_t new_size = (ospfs_size2nblocks(dir_oi->oi_size) + 1) * OSPFS_BLKSIZE;
+	int ret = change_size(dir_oi, new_size);
+
+	if (ret != 0)
+		return ERR_PTR(ret);
+
+	dir_oi->oi_size = new_size;
+
+	return ospfs_inode_data(dir_oi, off);
 }
 
 // ospfs_link(src_dentry, dir, dst_dentry
