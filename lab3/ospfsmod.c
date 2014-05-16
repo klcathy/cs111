@@ -1031,7 +1031,7 @@ remove_block(ospfs_inode_t *oi)
 //         (The value that the final add_block or remove_block set it to
 //          is probably not correct).
 //
-//   EXERCISE: Finish off this function.
+//   COMPLETED: Finish off this function.
 //   KAILIN?
 
 static int
@@ -1039,19 +1039,35 @@ change_size(ospfs_inode_t *oi, uint32_t new_size)
 {
 	uint32_t old_size = oi->oi_size;
 	int r = 0;
+	int add_result = 0; 
 
 	while (ospfs_size2nblocks(oi->oi_size) < ospfs_size2nblocks(new_size)) {
-	        /* EXERCISE: Your code here */
-		return -EIO; // Replace this line
+	        /* Your code here */
+		add_result = add_block(oi); 
+		// if add_block fails with EIO, exit 
+		if (add_result == -EIO)
+			return -EIO; 
+		// else if add_block fails with -ENOSPC, shrink back to original size
+		else if (add_result == -ENOSPC)
+			break; 
 	}
+
 	while (ospfs_size2nblocks(oi->oi_size) > ospfs_size2nblocks(new_size)) {
-	        /* EXERCISE: Your code here */
-		return -EIO; // Replace this line
+	        /* Your code here */
+		int remove_result = remove_block(oi); 
+		if (remove_result == -EIO)
+			return -EIO; 
 	}
 
 	/* EXERCISE: Make sure you update necessary file meta data
 	             and return the proper value. */
-	return -EIO; // Replace this line
+
+	// if add_result errored with -ENOSPC, do not change metadata, exit directly
+	if (add_result == -ENOSPC)
+		return -ENOSPC; 
+
+	oi->oi_size = new_size; 
+	return 0; 
 }
 
 
