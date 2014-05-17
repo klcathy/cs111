@@ -1485,10 +1485,11 @@ ospfs_create(struct inode *dir, struct dentry *dentry, int mode, struct nameidat
 	// get free inode and initialize inode
 	entry_ino = find_free_inode(); 
 
-	if (entry_io == 0)
+	if (entry_ino == 0)
 		return -ENOSPC;
 
-	ospfs_inode_t* file_oi = ospfs_inode(entry_ino); 
+	ospfs_inode_t* file_oi;
+	file_oi = ospfs_inode(entry_ino); 
 
 	if (file_oi == NULL)
 		return -EIO;
@@ -1548,11 +1549,9 @@ ospfs_symlink(struct inode *dir, struct dentry *dentry, const char *symname)
 	/* COMPLETED: Your code here. */
 	ospfs_symlink_inode_t* file_oi = NULL;
 	ospfs_direntry_t* new_direntry = NULL;
-	uint32_t blockno = 0;
-	struct inode* i;
 
 	// Check that the file type is a directory
-	if (dir_oi->oi_type != OSPFS_FTYPE_DIR)
+	if (dir_oi->oi_ftype != OSPFS_FTYPE_DIR)
 		return -EIO;
 
 	// Check that the file name is too long
@@ -1637,7 +1636,8 @@ ospfs_follow_link(struct dentry *dentry, struct nameidata *nd)
 			}
 		}
 
-		unsigned uid = current->uid;
+		unsigned uid = 0;
+		uid = current->uid;
 
 		// root
 		if (uid == 0)
@@ -1647,7 +1647,7 @@ ospfs_follow_link(struct dentry *dentry, struct nameidata *nd)
 		}
 		else
 		{
-			nd_set_link(nd, oi_symlink + i+ 1);
+			nd_set_link(nd, oi->oi_symlink + i + 1);
 			return (void*) 0;
 
 		}
