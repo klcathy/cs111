@@ -1315,7 +1315,7 @@ find_direntry(ospfs_inode_t *dir_oi, const char *name, int namelen)
 //
 //	The create_blank_direntry function should use this convention.
 //
-// EXERCISE: Write this function.
+// COMPLETED: Write this function.
 // KAILIN?
 
 static ospfs_direntry_t *
@@ -1328,7 +1328,7 @@ create_blank_direntry(ospfs_inode_t *dir_oi)
 	//    Use ERR_PTR if this fails; otherwise, clear out all the directory
 	//    entries and return one of them.
 
-	/* EXERCISE: Your code here. */
+	/* COMPLETED: Your code here. */
 	int off;
 
 	if (dir_oi->oi_ftype != OSPFS_FTYPE_DIR)
@@ -1381,13 +1381,48 @@ create_blank_direntry(ospfs_inode_t *dir_oi)
 //               -ENOSPC       if the disk is full & the file can't be created;
 //               -EIO          on I/O error.
 //
-//   EXERCISE: Complete this function.
+//   COMPLETED: Complete this function.
 //   KAILIN
 
 static int
 ospfs_link(struct dentry *src_dentry, struct inode *dir, struct dentry *dst_dentry) {
-	/* EXERCISE: Your code here. */
-	return -EINVAL;
+	/* Your code here. */
+	ospfs_inode_t *dir_oi = ospfs_inode(dir->i_ino);
+	ospfs_inode_t *src_oi = ospfs_inode(src_dentry->d_inode->i_ino);
+	ospfs_direntry_t *new_entry;
+
+	// Don't know if need nlink +1 == 0 chekc
+	if (dir_oi == NULL || dir_oi->oi_ftype != OSPFS_FTYPE_DIR || src_oi -> oi_nlink + 1 == 0)
+		return -EIO;
+
+	// if file dst->d_name.len is too long
+	if (dst_dentry->d_name.len > OSPFS_MAXNAMELEN)
+		return -ENAMETOOLONG; 
+
+	// if dst_dentry name alrdy exists
+	if (find_direntry(dir_oi, dst_dentry->d_name.name, dst_dentry->d_name.len) != NULL)
+		return -EEXIST; 
+
+	// Initialize new directory entry
+	new_entry = create_blank_direntry(dir_oi); 
+	
+	// for ENOSPC and EIO errors
+	if (IS_ERR(new_entry))
+		return PTR_ERR(new_entry); 
+
+	if (new_entry == NULL)
+		return -EIO;
+	
+
+	// else no errors, create hard link
+	new_entry->od_ino = src_dentry->d_inode->i_ino; 
+	memcpy(new_entry->od_name, dst_dentry->d_name.name, dst_dentry->d_name.len);
+	new_entry->od_name[dst_dentry->d_name.len] = '\0';
+
+	// Increase links on original src file
+	src_oi->oi_nlink++;
+	return 0; 
+
 }
 
 // ospfs_create
@@ -1417,7 +1452,7 @@ ospfs_link(struct dentry *src_dentry, struct inode *dir, struct dentry *dst_dent
 //   2. Find an empty inode.  Set the 'entry_ino' variable to its inode number.
 //   3. Initialize the directory entry and inode.
 //
-//   EXERCISE: Complete this function.
+//   COMPLETED: Complete this function.
 //   KAILIN?
 
 static int
@@ -1425,8 +1460,38 @@ ospfs_create(struct inode *dir, struct dentry *dentry, int mode, struct nameidat
 {
 	ospfs_inode_t *dir_oi = ospfs_inode(dir->i_ino);
 	uint32_t entry_ino = 0;
-	/* EXERCISE: Your code here. */
-	return -EINVAL; // Replace this line
+	ospfs_direntry_t *new_entry;
+	/* Your code here. */
+
+	// check that the file type is a directory
+
+	// if file dst->d_name.len is too long
+	if (dentry->d_name.len > OSPFS_MAXNAMELEN)
+		return -ENAMETOOLONG; 
+
+	// check that dentry name does not already exist
+	if (find_direntry(dir_oi, dentry->d_name.name, dentry->d_name.len) != NULL)
+		return -EEXIST; 
+
+	// find/create blank directory
+	new_entry = create_blank_direntry(dir_oi); 
+
+	// for ENOSPC and EIO errors
+	if (IS_ERR(new_entry))
+		return PTR_ERR(new_entry); 
+
+	// get free inode and initialize inode
+	entry_ino = find_free_inode(); 
+	ospfs_inode_t* file_oi = ospfs_inode(entry_ino); 
+	file_oi->oi_mode = mode;
+	file_oi->oi_size = 0; 
+	file_oi->oi_ftype = OSPFS_FTYPE_REG; 
+	file_oi->oi_nlink = 1; 
+
+	// initialize directory entry and inode
+	new_entry->od_ino = entry_ino; 
+	memcpy(new_entry->od_name, dentry->d_name.name, dentry->d_name.len);
+	new_entry->od_name[dst_dentry->d_name.len] = '\0';
 
 	/* Execute this code after your function has successfully created the
 	   file.  Set entry_ino to the created file's inode number before
@@ -1540,14 +1605,43 @@ ospfs_symlink(struct inode *dir, struct dentry *dentry, const char *symname)
 //     root?/path/1:/path/2.
 //   (hint: Should the given form be changed in any way to make this method
 //   easier?  With which character do most functions expect C strings to end?)
-//   KAILIN?
 
 static void *
 ospfs_follow_link(struct dentry *dentry, struct nameidata *nd)
 {
 	ospfs_symlink_inode_t *oi =
 		(ospfs_symlink_inode_t *) ospfs_inode(dentry->d_inode->i_ino);
-	// Exercise: Your code here.
+	// Completed: Your code here.
+
+	// Only root? supported
+	if (strncmp(oi->oi_symlink, "root?", 5) == 0)
+	{
+		int i;
+		for (i = 0; i < strlen(oi->oi_symlink); i++)
+		{
+			if (oi->oi_symlink[i] == ':')
+			{
+				oi->oi_symlink[i] = '\0';
+				break;
+			}
+		}
+
+		unsigned uid = current->uid;
+
+		// root
+		if (uid == 0)
+		{
+			nd_set_link(nd, oi->oi_symlink + 5);
+			return (void*) 0;
+		}
+		else
+		{
+			nd_set_link(nd, oi_symlink + i+ 1);
+			return (void*) 0;
+
+		}
+
+	}
 
 	nd_set_link(nd, oi->oi_symlink);
 	return (void *) 0;
