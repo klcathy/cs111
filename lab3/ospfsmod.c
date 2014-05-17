@@ -1464,6 +1464,8 @@ ospfs_create(struct inode *dir, struct dentry *dentry, int mode, struct nameidat
 	/* Your code here. */
 
 	// check that the file type is a directory
+	if (dir_oi->oi_ftype != OSPFS_FTYPE_DIR)
+		return -EIO;
 
 	// if file dst->d_name.len is too long
 	if (dentry->d_name.len > OSPFS_MAXNAMELEN)
@@ -1482,7 +1484,16 @@ ospfs_create(struct inode *dir, struct dentry *dentry, int mode, struct nameidat
 
 	// get free inode and initialize inode
 	entry_ino = find_free_inode(); 
+
+	if (entry_io == 0)
+		return -ENOSPC;
+
 	ospfs_inode_t* file_oi = ospfs_inode(entry_ino); 
+
+	if (file_oi == NULL)
+		return -EIO;
+
+	// Initialize new inode
 	file_oi->oi_mode = mode;
 	file_oi->oi_size = 0; 
 	file_oi->oi_ftype = OSPFS_FTYPE_REG; 
