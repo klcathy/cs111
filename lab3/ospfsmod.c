@@ -222,16 +222,17 @@ find_free_inode(void)
 	uint32_t i;
 	ospfs_inode_t *temp;
 
+	// Determine what inode we can use
 	// inode 1: reserved for root
 	// inode 0: must never be used
-	for (i = 2; i < ospfs_super->os_ninodes; i++)
-	{
-		temp = ospfs_block(i);	// load inode struct
-		if (temp->oi_nlink == 0)		// no hardlinks => free
+	for (i = 2; i < ospfs_super->os_ninodes; i++) {
+		temp = ospfs_inode(i); // load inode struct
+
+		if (temp->oi_nlink == 0) // no hardlinks => free
 			return i;
 	}
 
-	// No free inodes
+	// no free inodes
 	return 0;
 }
 
@@ -439,6 +440,7 @@ ospfs_dir_lookup(struct inode *dir, struct dentry *dentry, struct nameidata *ign
 //
 //   COMPLETED: Finish implementing this function.
 
+
 static int
 ospfs_dir_readdir(struct file *filp, void *dirent, filldir_t filldir)
 {
@@ -624,32 +626,32 @@ allocate_block(void)
 static void
 free_block(uint32_t blockno)
 {
-	//COMPLETED	
+	//COMPLETED
 	uint32_t i;
-	uint32_t offset; 
-	void* vector; 
+	uint32_t offset;
+	void* vector;
 
 	// check bootsector, superblock
 	if (blockno < OSPFS_FREEMAP_BLK)
-		return; 
+		return;
 
 	// check freeblock bitmap
 	if (blockno >= OSPFS_FREEMAP_BLK && blockno < ospfs_super->os_firstinob)
-		return; 
+		return;
 
 	// check inode block
 	if (blockno >= ospfs_super->os_firstinob && blockno < (ospfs_super->os_firstinob + ospfs_super->os_ninodes))
-		return;  
-	
+		return;
+
 	// out of bounds
 	if (blockno > (ospfs_super->os_nblocks-1))
-		return; 
+		return;
 
 	// do some division shit to get block data from blockno
-	i = blockno/OSPFS_BLKBITSIZE; 
-	offset = blockno%OSPFS_BLKBITSIZE; 
+	i = blockno/OSPFS_BLKBITSIZE;
+	offset = blockno%OSPFS_BLKBITSIZE;
 	vector = ospfs_block(OSPFS_FREEMAP_BLK+i);
-	
+
 	// set bit vector to 1
 	bitvector_set(vector, offset);
 
@@ -724,6 +726,8 @@ indir_index(uint32_t b)
 	// if b is in rest of file's indirect blocks
 	else if (b < OSPFS_MAXFILEBLKS)
 		return ((b - (OSPFS_NDIRECT + OSPFS_NINDIRECT))/OSPFS_NINDIRECT);
+	else 
+		return -1;
 }
 
 
@@ -746,14 +750,12 @@ direct_index(uint32_t b)
 	if (b < OSPFS_NDIRECT)
 		return b; 
 
-	// b is one of file's first indirect blocks
-	else if (b < (OSPFS_NDIRECT + OSPFS_NINDIRECT))
-		return (b - OSPFS_NDIRECT); 
-
-	// b is one of file's doubly indirect blocks
-	else if (b < OSPFS_MAXFILEBLKS)
+	// b is one of file's first indirect block
+	else if (b >= OSPFS_NDIRECT && b < OSPFS_NDIRECT + OSPFS_NINDIRECT)
+		return b - OSPFS_NDIRECT;
+	// b is one of file's doubly indirect block
+	else if (b >= OSPFS_NDIRECT + OSPFS_NINDIRECT && b < OSPFS_MAXFILEBLKS)
 		return (b - OSPFS_NDIRECT - OSPFS_NINDIRECT) % OSPFS_NINDIRECT;
-	
 	// should never do this
 	else
 		return -1;
@@ -881,9 +883,9 @@ add_block(ospfs_inode_t *oi)
 
 			memset(ospfs_block(allocated[2]), 0, OSPFS_BLKSIZE);
 			oi->oi_indirect2 = allocated[0];
-			indirect2_block = ospfs_block(oi->oi_indirect2);
+			indirect2_block =  ospfs_block(oi->oi_indirect2);
 			indirect2_block[0] = allocated[1];
-			indirect_block = ospfs_block(indirect2_block[0]);
+			indirect_block =  ospfs_block(indirect2_block[0]);
 			indirect_block[0] = allocated[2];
 		}
 		else if (direct_index(n) == 0)
@@ -1058,8 +1060,8 @@ change_size(ospfs_inode_t *oi, uint32_t new_size)
 	while (ospfs_size2nblocks(oi->oi_size) > ospfs_size2nblocks(new_size)) {
 	        /* Your code here */
 		int remove_result = remove_block(oi); 
-		if (remove_result == -EIO)
-			return -EIO; 
+		if (remove_result < 0)
+			return remove_result; 
 	}
 
 	/* EXERCISE: Make sure you update necessary file meta data
@@ -1335,7 +1337,8 @@ create_blank_direntry(ospfs_inode_t *dir_oi)
 
 	/* COMPLETED: Your code here. */
 	int off;
-	uint32_t new_size; 
+	uint32_t new_size;
+	int ret;
 
 	if (dir_oi->oi_ftype != OSPFS_FTYPE_DIR)
 		return ERR_PTR(-EIO);
@@ -1350,7 +1353,7 @@ create_blank_direntry(ospfs_inode_t *dir_oi)
 
 	// add a block
 	new_size = (ospfs_size2nblocks(dir_oi->oi_size) + 1) * OSPFS_BLKSIZE;
-	int ret = change_size(dir_oi, new_size);
+	ret = change_size(dir_oi, new_size);
 
 	if (ret != 0)
 		return ERR_PTR(ret);
@@ -1471,6 +1474,8 @@ ospfs_create(struct inode *dir, struct dentry *dentry, int mode, struct nameidat
 	/* Your code here. */
 
 	// check that the file type is a directory
+	if (dir_oi->oi_ftype != OSPFS_FTYPE_DIR) 
+		return -EIO;
 
 	// if file dst->d_name.len is too long
 	if (dentry->d_name.len > OSPFS_MAXNAMELEN)
@@ -1489,7 +1494,15 @@ ospfs_create(struct inode *dir, struct dentry *dentry, int mode, struct nameidat
 
 	// get free inode and initialize inode
 	entry_ino = find_free_inode(); 
+
+	if (entry_ino == 0)
+		return -ENOSPC;
+
 	file_oi = ospfs_inode(entry_ino); 
+
+	if (file_oi == NULL)
+		return -EIO;
+
 	file_oi->oi_mode = mode;
 	file_oi->oi_size = 0; 
 	file_oi->oi_ftype = OSPFS_FTYPE_REG; 
