@@ -1,0 +1,49 @@
+# Fill in your name, student ID, and email address in this file.
+# If you are working in a team, fill out the information for both team 
+# members.
+
+# SUBMIT THE LAB ONLY ONCE (from only one partner). This file will be
+# automatically parsed in order to give both team members credit for the
+# lab.
+
+# You need to fill in the EXERCISE sections describing your solutions
+# for Tasks 1, 2, and 3, as well as write the corresponding code.
+# If you did one or more extra credit problems, indicate which one in the
+# appropriate section below (remove the # sign first). If you have any other
+# information you'd like us to know, please add it at the end of the file.
+
+# Partner 1
+Name: Roger Chen
+Student ID: 504043927
+Email: rchen93@ucla.edu
+
+# Partner 2 (if you're working in a team)
+Name: Kailin Chang
+Student ID: 503999157
+Email: klcathy@ucla.edu
+
+# EXERCISE 1: What method you used to make your peer download and upload
+#    files in parallel?  (~1-3 sentences)
+Implemented concurrency using forks and it processes downloads in parallel
+first. After that it will process uploads in parallel.
+
+# EXERCISE 2A: What conditions did you find and fix that would have
+#    triggered a buffer overrun bug?  (~1-3 sentences each)
+Filenames longer than FILENAMESIZ-1 overrun the buffer. 
+Fixed by changing strcpy(t->filename, filename) to strcpy(t->filename, filename, FILENAMESIZ)
+
+
+# EXERCISE 2B: What other robustness problems did you fix?  (~1-3 sentences
+#    each)
+The peer should not serve files located in any other directory.
+Fixed by checking that the character '/' is not in t->filename: memchr(t->filename, '/', FILENAMESIZ) != 0
+
+# EXERCISE 3: Describe the attacks you implemented for "evil mode".  Why
+#    are they attacks?  (~3-10 sentences each)
+
+# Extra credit problems
+#Extra credit problem: none
+
+# Add any other information you'd like us to know below this line.
+
+Compile on SEASnet 
