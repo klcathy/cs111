@@ -36,10 +36,13 @@ static int listen_port;
  * a bounded buffer that simplifies reading from and writing to peers.
  */
 
-// Increase TASKBUFSIZ so more peers could be logged in at once
+// Exercise 2B: Increase TASKBUFSIZ so more peers could be logged in at once
 #define TASKBUFSIZ	10000
 //#define TASKBUFSIZ	4096	// Size of task_t::buf
 #define FILENAMESIZ	256	// Size of task_t::filename
+
+ // Exercise 2B: Prevent a peer from monopolizing another peer's resources
+ #define MAXFILESIZ 1000000		// Set max file size to approx 1 MB
 
 typedef enum tasktype {		// Which type of connection is this?
 	TASK_TRACKER,		// => Tracker connection
@@ -577,6 +580,13 @@ static void task_download(task_t *t, task_t *tracker_task)
 		}
 	}
 
+	// Exercise 2B: Prevent a peer from monopolizing another peer's resources
+	if (t->total_written > MAXFILESIZ)
+	{
+		error("No hogging resources allowed\n");
+		goto try_again;
+	}
+
 	// Empty files are usually a symptom of some error.
 	if (t->total_written > 0) {
 		message("* Downloaded '%s' was %lu bytes long\n",
@@ -648,12 +658,26 @@ static void task_upload(task_t *t)
 			break;
 	}
 
+	// Exercise 2B: Check that GET request is not too long
+	if (strlen(t->buf) > FILENAMESIZ + 12)
+	{
+		error("GET request too long\n");
+		goto exit;
+	}
+
 	assert(t->head == 0);
 	if (osp2p_snscanf(t->buf, t->tail, "GET %s OSP2P\n", t->filename) < 0) {
 		error("* Odd request %.*s\n", t->tail, t->buf);
 		goto exit;
 	}
 	t->head = t->tail = 0;
+
+	// Exercise 2B: Check that filename itself is not too long
+	if (strlen(t->filename) > FILENAMESIZ)
+	{
+		error("Filename too long\n");
+		goto exit;
+	}
 
 	// EXERCISE 2B
 	// Check for robustness: should not serve file located in another directory
