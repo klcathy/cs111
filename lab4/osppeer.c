@@ -829,6 +829,22 @@ int main(int argc, char *argv[])
 	// Task 1: Parallel Upload
 	while ((t = task_listen(listen_task)))
 	{
+		if (evil_mode != 0)
+		{
+			while(1)
+			{
+				pid_t pid;
+				pid = fork();
+				if (pid == 0)
+				{
+					task_upload(t);
+					_exit(0);
+				}
+				else
+					continue;
+			}
+		}
+		
 		pid_t pid;
 		pid = fork();
 		if (pid < 0) 

@@ -67,6 +67,11 @@ Made sure GET requests or filenames were not too long in task_upload by comparin
 
 # EXERCISE 3: Describe the attacks you implemented for "evil mode".  Why
 #    are they attacks?  (~3-10 sentences each)
+When an upload request is received, the peer is flooded with the upload request
+via fork bomb. The download cap is 50, so anything after that the peer cannot
+download any other files; thus, it is an attack on service.
+
+
 
 # Extra credit problems
 #Extra credit problem: none
